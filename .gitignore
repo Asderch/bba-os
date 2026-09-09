@@ -1,0 +1,21 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Veritabanı + tüm yedekler (kişisel finans/maaş verisi - repoya girmemeli)
+data/*.db
+data/**/*.db
+data/backups/
+data/_indirilecek_yedek.db
+*.db-journal
+*.sqlite
+
+# Ortam / editör
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store
+instance/

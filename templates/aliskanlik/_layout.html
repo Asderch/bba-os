@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("flame", 22) }} Alışkanlıklar</h2>
+    <div class="bba-subnav">
+        <a href="{{ url_for('aliskanlik.index') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'aliskanlik.index' }}">Bugün</a>
+        <a href="{{ url_for('aliskanlik.manage_habits') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'aliskanlik.manage_habits' }}">Yönet</a>
+        <a href="{{ url_for('aliskanlik.stats') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'aliskanlik.stats' }}">İstatistik</a>
+    </div>
+</div>
+{% block inner %}{% endblock %}
+{% endblock %}

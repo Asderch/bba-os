@@ -1,0 +1,305 @@
+{% extends "butce/_layout.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Bütçe Takip{% endblock %}
+
+{% block inner %}
+<div class="page-header d-print-none mb-3 mt-3">
+    <div class="row g-2 align-items-center">
+        <div class="col">
+            <h2 class="page-title">{{ month_name }} {{ year }}</h2>
+        </div>
+        <div class="col-auto ms-auto">
+            <div class="btn-list">
+                <form method="POST" action="{{ url_for('butce.toggle_gelir_gizli') }}" class="d-inline">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        {{ icon('eye', 16) if gelir_gizli else icon('eye-off', 16) }}
+                        {{ 'Gelirleri göster' if gelir_gizli else 'Gelirleri gizle' }}
+                    </button>
+                </form>
+                <a href="{{ url_for('butce.index', year=prev_year, month=prev_month) }}" class="btn btn-outline-secondary btn-sm">← Önceki Ay</a>
+                <a href="{{ url_for('butce.index', year=next_year, month=next_month) }}" class="btn btn-outline-secondary btn-sm">Sonraki Ay →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="bg-green-lt avatar">↑</span></div>
+                    <div class="col">
+                        <div class="font-weight-medium font-mono">
+                            {%- if gelir_gizli %}{{ PARA_MASK }}{% else %}{{ '%.2f' | format(total_income) }} ₺{% endif -%}
+                        </div>
+                        <div class="text-secondary">Toplam Gelir</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="bg-red-lt avatar">↓</span></div>
+                    <div class="col">
+                        <div class="font-weight-medium font-mono">{{ '%.2f' | format(total_expense) }} ₺</div>
+                        <div class="text-secondary">Toplam Gider</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="{{ 'bg-green-lt' if net >= 0 else 'bg-red-lt' }} avatar">=</span></div>
+                    <div class="col">
+                        <div class="font-weight-medium font-mono">
+                            {%- if gelir_gizli %}{{ PARA_MASK }}{% else %}{{ '%.2f' | format(net) }} ₺{% endif -%}
+                        </div>
+                        <div class="text-secondary">Net</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Bu Ayın Birikim Hedefi</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('butce.set_goal') }}" class="d-flex gap-2 mb-3">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="number" step="0.01" name="target_amount" class="form-control font-mono" placeholder="örn. 5000"
+                   value="{{ goal_amount if goal_amount is not none else '' }}">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+        </form>
+
+        {% if goal_amount is not none %}
+            {% if goal_progress_pct is not none %}
+            <div class="bba-goal-bar mb-2"><div class="bba-goal-fill" style="width: {{ goal_progress_pct }}%;"></div></div>
+            <div class="text-secondary small mb-2 font-mono">%{{ goal_progress_pct }} tamamlandı</div>
+            {% endif %}
+
+            {% if goal_shortfall is not none and goal_shortfall > 0 %}
+                <div class="alert alert-warning mb-0">
+                    {%- if gelir_gizli %}
+                        Hedefine ulaşmak için biraz daha var.
+                        {% if goal_extra_hours is not none %}Gelirleri göster'e basınca kaç saat mesai gerektiğini de gösteririm.{% endif %}
+                    {%- else %}
+                        Hedefine <span class="font-mono fw-bold">{{ '%.2f' | format(goal_shortfall) }} ₺</span> kaldı.
+                        {% if goal_extra_hours is not none %}
+                            Bu ayki saatlik mesai ücretinle kapatmak için yaklaşık
+                            <span class="font-mono fw-bold">{{ '%.1f' | format(goal_extra_hours) }} saat</span> daha mesai gerekiyor.
+                        {% else %}
+                            Gerekli ekstra mesai saatini hesaplayabilmem için Mesai Takip'te bu ayın net maaşını gir.
+                        {% endif %}
+                    {%- endif %}
+                </div>
+            {% else %}
+                <div class="alert alert-success mb-0">Bu ayki birikim hedefine ulaştın!</div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if donut_segments %}
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Gider Dağılımı</h3></div>
+    <div class="card-body">
+        <div class="d-flex align-items-center flex-wrap gap-4 justify-content-center">
+            <svg viewBox="0 0 200 200" class="donut-chart">
+                <circle cx="100" cy="100" r="80" fill="none" stroke="var(--tblr-bg-surface-secondary)" stroke-width="32"></circle>
+                {% for seg in donut_segments %}
+                <circle cx="100" cy="100" r="80" fill="none" stroke="{{ seg.color }}" stroke-width="32"
+                        stroke-dasharray="{{ seg.dasharray }}" stroke-dashoffset="{{ seg.dashoffset }}"
+                        transform="rotate(-90 100 100)"></circle>
+                {% endfor %}
+            </svg>
+            <div class="d-flex flex-column gap-2" style="min-width: 200px;">
+                {% for seg in donut_segments %}
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge" style="background: {{ seg.color }}; width: 10px; height: 10px; padding: 0; border-radius: 2px;"></span>
+                    <span class="flex-fill">{{ seg.category }}</span>
+                    <span class="text-secondary font-mono small">{{ '%.0f' | format(seg.amount) }} ₺ ({{ seg.percent }}%)</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Yeni Kayıt</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('butce.add_transaction') }}">
+            <div class="btn-group w-100 mb-3 kind-toggle" role="group">
+                <input type="radio" class="btn-check" name="kind" id="kind-gelir" value="gelir" autocomplete="off" onchange="switchKind('gelir')">
+                <label class="btn btn-outline-secondary btn-kind-gelir" for="kind-gelir">↑ Gelir</label>
+                <input type="radio" class="btn-check" name="kind" id="kind-gider" value="gider" autocomplete="off" checked onchange="switchKind('gider')">
+                <label class="btn btn-outline-secondary btn-kind-gider" for="kind-gider">↓ Gider</label>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Tarih</label>
+                    <div class="date-field">
+                        <input type="hidden" name="entry_date" value="{{ today }}">
+                        <button type="button" class="form-control date-display text-start"></button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tutar (₺)</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control font-mono" placeholder="örn. 250" required>
+                </div>
+                <div class="col-md-3" id="category-gider-field">
+                    <label class="form-label">Kategori</label>
+                    <select name="category" id="category-gider" class="form-select">
+                        {% for cat in expense_categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-none" id="category-gelir-field">
+                    <label class="form-label">Kategori</label>
+                    <select name="category" id="category-gelir" class="form-select" disabled>
+                        {% for cat in income_categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-3 mb-3">
+                <label class="form-label">Not (isteğe bağlı)</label>
+                <input type="text" name="note" class="form-control" placeholder="örn. Migros haftalık alışveriş">
+            </div>
+            <button type="submit" class="btn btn-primary">Ekle</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Bu Ayın Hareketleri</h3></div>
+    {% if not transactions %}
+        <div class="card-body text-center text-secondary">Bu ay için henüz kayıt yok.</div>
+    {% else %}
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>Kategori</th>
+                    <th>Not</th>
+                    <th class="text-end">Tutar</th>
+                    <th class="w-1"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                {% set gizli_satir = gelir_gizli and t.kind == 'gelir' %}
+                <tr>
+                    <td class="text-secondary font-mono small">{{ t.entry_date | gunadi }}</td>
+                    <td>
+                        <span class="badge {{ 'bg-green-lt text-green' if t.kind == 'gelir' else 'bg-red-lt text-red' }}">{{ t.category }}</span>
+                    </td>
+                    <td class="text-secondary">{{ t.note or '' }}</td>
+                    <td class="text-end font-mono {{ 'text-green' if t.kind == 'gelir' else 'text-red' }}">
+                        {%- if gizli_satir %}{{ PARA_MASK }}
+                        {%- elif t.kind == 'gelir' %}+{{ '%.2f' | format(t.amount) }} ₺
+                        {%- else %}-{{ '%.2f' | format(t.amount) }} ₺{% endif -%}
+                    </td>
+                    <td class="text-end">
+                        {% if gizli_satir %}
+                        <button class="btn btn-icon btn-sm" type="button" disabled title="Düzenlemek için gelirleri göster">{{ icon('pencil', 16) }}</button>
+                        {% else %}
+                        <button class="btn btn-icon btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#edit-{{ t.id }}" title="Düzenle">{{ icon('pencil', 16) }}</button>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('butce.delete_transaction', t_id=t.id) }}" class="d-inline"
+                              onsubmit="return confirm('Bu kayıt silinecek. Emin misin?');">
+                            <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% if not gizli_satir %}
+                <tr class="collapse" id="edit-{{ t.id }}">
+                    <td colspan="5" class="bg-body-tertiary">
+                        <form method="POST" action="{{ url_for('butce.edit_transaction', t_id=t.id) }}" class="py-2">
+                            <div class="btn-group w-100 mb-3 kind-toggle" role="group">
+                                <input type="radio" class="btn-check" name="kind" id="kind-gelir-{{ t.id }}" value="gelir"
+                                       autocomplete="off" {{ 'checked' if t.kind == 'gelir' }} onchange="switchKindEdit({{ t.id }}, 'gelir')">
+                                <label class="btn btn-outline-secondary btn-kind-gelir" for="kind-gelir-{{ t.id }}">↑ Gelir</label>
+                                <input type="radio" class="btn-check" name="kind" id="kind-gider-{{ t.id }}" value="gider"
+                                       autocomplete="off" {{ 'checked' if t.kind == 'gider' }} onchange="switchKindEdit({{ t.id }}, 'gider')">
+                                <label class="btn btn-outline-secondary btn-kind-gider" for="kind-gider-{{ t.id }}">↓ Gider</label>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Tarih</label>
+                                    <div class="date-field">
+                                        <input type="hidden" name="entry_date" value="{{ t.entry_date.isoformat() }}">
+                                        <button type="button" class="form-control date-display text-start"></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Tutar (₺)</label>
+                                    <input type="number" name="amount" step="0.01" min="0.01" value="{{ t.amount }}" class="form-control font-mono" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Kategori</label>
+                                    <select name="category" id="edit-cat-gider-{{ t.id }}" class="form-select {{ 'd-none' if t.kind != 'gider' }}" {{ 'disabled' if t.kind != 'gider' }}>
+                                        {% for cat in expense_categories %}
+                                            <option value="{{ cat }}" {{ 'selected' if t.category == cat }}>{{ cat }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select name="category" id="edit-cat-gelir-{{ t.id }}" class="form-select {{ 'd-none' if t.kind != 'gelir' }}" {{ 'disabled' if t.kind != 'gelir' }}>
+                                        {% for cat in income_categories %}
+                                            <option value="{{ cat }}" {{ 'selected' if t.category == cat }}>{{ cat }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Not</label>
+                                    <input type="text" name="note" value="{{ t.note or '' }}" class="form-control">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm mt-3">Güncelle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function switchKind(kind) {
+    const gelirField = document.getElementById('category-gelir-field');
+    const giderField = document.getElementById('category-gider-field');
+    const gelirSelect = document.getElementById('category-gelir');
+    const giderSelect = document.getElementById('category-gider');
+    if (kind === 'gelir') {
+        gelirField.classList.remove('d-none'); giderField.classList.add('d-none');
+        gelirSelect.disabled = false; giderSelect.disabled = true;
+    } else {
+        giderField.classList.remove('d-none'); gelirField.classList.add('d-none');
+        giderSelect.disabled = false; gelirSelect.disabled = true;
+    }
+}
+
+function switchKindEdit(id, kind) {
+    const gelirSelect = document.getElementById(`edit-cat-gelir-${id}`);
+    const giderSelect = document.getElementById(`edit-cat-gider-${id}`);
+    if (kind === 'gelir') {
+        gelirSelect.classList.remove('d-none'); giderSelect.classList.add('d-none');
+        gelirSelect.disabled = false; giderSelect.disabled = true;
+    } else {
+        giderSelect.classList.remove('d-none'); gelirSelect.classList.add('d-none');
+        giderSelect.disabled = false; gelirSelect.disabled = true;
+    }
+}
+</script>
+{% endblock %}

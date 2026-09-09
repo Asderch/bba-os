@@ -1,0 +1,5 @@
+# Metin dosyalarını LF olarak normalize et (Windows'ta CRLF churn'ünü önler)
+* text=auto eol=lf
+*.woff2 binary
+*.png binary
+*.db binary

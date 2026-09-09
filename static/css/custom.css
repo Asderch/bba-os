@@ -1,0 +1,61 @@
+/* ============================================================
+   Bileşen stilleri — tema (theme-slash.css) yüklendİKTEN sonra gelir.
+   Yalnızca modül içi bileşenler: checkbox, tarih seçici, donut, segment.
+   Renk/tema token'ları theme-slash.css'te tek kaynakta.
+   ============================================================ */
+
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("../fonts/JetBrainsMono-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("../fonts/JetBrainsMono-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+}
+
+/* Modül içi sayfa başlığı (theme-slash .page-title'ı da biçimliyor; burada
+   yalnızca alt/üst boşluk uyumu için bir şey yok — başlık rengi/fontu temada). */
+
+/* Checkbox (günlük iş / alışkanlık) */
+.daily-check {
+    width: 40px; height: 40px; border-radius: 9px; border: 1px solid var(--bba-border-secondary);
+    background: transparent; color: var(--bba-bg); font-size: 1rem; font-weight: 800;
+    cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1;
+    transition: background 0.12s, border-color 0.12s;
+}
+.daily-check:hover { border-color: var(--bba-white); }
+/* İşaretli kutu: beyaz dolgu + zeminle aynı koyu ✓ (görünür olsun). */
+.daily-check-done { background: var(--bba-white); color: var(--bba-bg); border-color: var(--bba-white); }
+
+/* Segment kontrolü (Gelir/Gider) */
+.kind-toggle .btn-check:checked + .btn-kind-gelir { background: var(--bba-positive-dim); border-color: var(--bba-positive); color: var(--bba-positive); }
+.kind-toggle .btn-check:checked + .btn-kind-gider { background: var(--bba-negative-dim); border-color: var(--bba-negative); color: var(--bba-negative); }
+
+/* Mini takvim (tarih seçici) */
+.date-field { position: relative; }
+.mini-calendar {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 1050;
+    background: var(--bba-card-bg-alt); border: 1px solid var(--bba-border-secondary); border-radius: 10px;
+    padding: 10px; width: 244px; box-shadow: 0 16px 32px -8px rgba(0,0,0,0.55);
+}
+.mini-calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.mini-calendar-label { font-size: 0.85rem; font-weight: 700; }
+.mini-calendar-nav {
+    background: transparent; border: 1px solid var(--bba-border-secondary); color: var(--bba-text);
+    width: 40px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+}
+.mini-calendar-nav:hover { border-color: var(--bba-white); color: var(--bba-white); }
+.mini-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mini-calendar-dayname { text-align: center; font-size: 0.68rem; color: var(--bba-text-muted); padding: 4px 0; }
+.mini-calendar-day { background: transparent; border: none; color: var(--bba-text); border-radius: 7px; padding: 9px 0; font-size: 0.82rem; cursor: pointer; font-family: var(--app-mono); }
+.mini-calendar-day:hover { background: var(--bba-card-bg); }
+.mini-calendar-selected { background: var(--bba-white); color: var(--bba-bg); font-weight: 700; }
+
+/* Donut grafik */
+.donut-chart { width: 170px; height: 170px; flex-shrink: 0; }
+.donut-center-value { fill: var(--bba-text); font-size: 22px; font-weight: 800; font-family: var(--app-mono); }
+.donut-center-label { fill: var(--bba-text-muted); font-size: 10px; }

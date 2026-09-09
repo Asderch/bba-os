@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} · BBA OS{% endblock %}
+
+{% block content %}
+<div class="bba-card" style="max-width: 480px; margin: 48px auto; text-align: center;">
+    <div class="bba-metric-number" style="margin-bottom: 8px;">{{ code }}</div>
+    <p class="text-secondary mb-3">{{ message }}</p>
+    <a href="{{ url_for('root') }}" class="text-secondary">← Ana Sayfa</a>
+</div>
+{% endblock %}

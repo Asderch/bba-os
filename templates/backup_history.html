@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Yedek Geçmişi{% endblock %}
+
+{% block content %}
+<h2 class="page-title mt-3 mb-1">Yedek Geçmişi</h2>
+<p class="text-secondary mb-3">
+    Her gün ilk ziyaretinde otomatik bir yedek alınır. Son {{ retention_days }} günün
+    yedeği burada tutulur, daha eskiler otomatik silinir.
+</p>
+
+<div class="card">
+    {% if not backups %}
+        <div class="card-body text-center text-secondary">Henüz otomatik yedek alınmamış.</div>
+    {% else %}
+    <div class="list-group list-group-flush">
+        {% for b in backups %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <span class="font-mono">{{ b.date }}</span>
+            <a href="{{ url_for('download_backup', filename=b.filename) }}" class="btn btn-outline-secondary btn-sm">İndir</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<a href="{{ url_for('root') }}" class="d-inline-block mt-3 text-secondary">← Ana Sayfa</a>
+{% endblock %}

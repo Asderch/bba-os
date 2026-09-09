@@ -1,0 +1,84 @@
+{% extends "is_takip/_layout.html" %}
+{% block title %}Bugün{% endblock %}
+
+{% block inner %}
+<div class="page-header mt-3 mb-3">
+    <h2 class="page-title">{{ weekday_name }}, {{ today.strftime('%d.%m.%Y') }}</h2>
+    <p class="text-secondary mb-0">
+        Günlük işlerinden {{ daily_done_count }} / {{ daily_rows|length }} tanesini bugün tamamladın.
+        {% if deadline_rows %}
+            {% set acil_count = deadline_rows | selectattr('urgency', 'in', ['gecikmis', 'yaklasan']) | list | length %}
+            {% if acil_count > 0 %}Dikkat: {{ acil_count }} terminli iş yaklaşıyor ya da gecikti.{% else %}Yaklaşan bir termin yok.{% endif %}
+        {% else %}
+            Termini olan bir iş kaydedilmemiş.
+        {% endif %}
+    </p>
+</div>
+
+<div class="row row-cards">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h3 class="card-title">Günlük İşlerim</h3></div>
+            {% if not daily_rows %}
+                <div class="card-body text-center text-secondary">
+                    Henüz günlük işin yok. <a href="{{ url_for('is_takip.manage_tasks') }}">İşleri Yönet'ten ekleyebilirsin.</a>
+                </div>
+            {% else %}
+            <div class="list-group list-group-flush">
+                {% for row in daily_rows %}
+                <div class="list-group-item d-flex align-items-center gap-3 {{ 'bg-body-tertiary' if row.done }}">
+                    <form method="POST" action="{{ url_for('is_takip.toggle_daily_task', task_id=row.task.id) }}">
+                        <button type="submit" class="daily-check {{ 'daily-check-done' if row.done }}">{{ '✓' if row.done }}</button>
+                    </form>
+                    <div class="flex-fill">
+                        <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
+                            {{ row.task.title }}
+                            {% if row.task.tag %}<span class="badge" style="background: {{ row.task.tag.color }}22; color: {{ row.task.tag.color }};">{{ row.task.tag.name }}</span>{% endif %}
+                        </div>
+                        {% if row.task.note %}<div class="text-secondary small">{{ row.task.note }}</div>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h3 class="card-title">Terminli İşler</h3></div>
+            {% if not deadline_rows %}
+                <div class="card-body text-center text-secondary">
+                    Termini olan bir iş yok. <a href="{{ url_for('is_takip.manage_tasks') }}">İşleri Yönet'ten ekleyebilirsin.</a>
+                </div>
+            {% else %}
+            <div class="list-group list-group-flush">
+                {% for row in deadline_rows %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
+                            {% if row.urgency == 'gecikmis' %}{{ -row.days_left }} gün gecikti
+                            {% elif row.days_left == 0 %}Bugün
+                            {% else %}{{ row.days_left }} gün kaldı{% endif %}
+                        </span>
+                        <div>
+                            <div class="fw-medium">
+                                {{ row.task.title }}
+                                {% if row.task.tag %}<span class="badge" style="background: {{ row.task.tag.color }}22; color: {{ row.task.tag.color }};">{{ row.task.tag.name }}</span>{% endif %}
+                            </div>
+                            <div class="text-secondary small">
+                                {{ row.task.due_date.strftime('%d.%m.%Y') }}{% if row.task.note %} — {{ row.task.note }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('is_takip.complete_deadline_task', task_id=row.task.id) }}">
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Tamamlandı</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "aliskanlik/_layout.html" %}
+{% from "_icons.html" import icon, impact_meter %}
+{% block title %}İstatistik{% endblock %}
+
+{% block inner %}
+<h2 class="page-title mt-3 mb-3">Bu Haftanın Özeti</h2>
+
+{% if not table %}
+    <div class="card"><div class="card-body text-center text-secondary">Henüz alışkanlık eklemedin.</div></div>
+{% else %}
+<div class="row row-cards mb-3">
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ week_puan }} / {{ week_max_puan }}</div>
+            <div class="text-secondary">Bu Haftaki Etki Puanı</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead>
+                <tr>
+                    <th>Alışkanlık</th>
+                    {% for d in week_days %}
+                        <th class="text-center">{{ weekdays[d.weekday()][:3] }}</th>
+                    {% endfor %}
+                    <th class="text-end">Toplam</th>
+                    <th class="text-end">Seri</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table %}
+                <tr>
+                    <td class="text-nowrap">{{ row.habit.name }} {{ impact_meter(row.habit.impact) }}</td>
+                    {% for done in row.cells %}
+                        <td class="text-center">{% if done %}<span class="text-primary">✓</span>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
+                    {% endfor %}
+                    <td class="text-end fw-bold font-mono">{{ row.total }} / 7</td>
+                    <td class="text-end font-mono">{% if row.streak > 0 %}{{ icon('flame', 14) }} {{ row.streak }}{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

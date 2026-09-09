@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("briefcase", 22) }} İş Takip</h2>
+    <div class="bba-subnav">
+        <a href="{{ url_for('is_takip.index') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'is_takip.index' }}">Bugün</a>
+        <a href="{{ url_for('is_takip.manage_tasks') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'is_takip.manage_tasks' }}">İşleri Yönet</a>
+        <a href="{{ url_for('is_takip.history') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'is_takip.history' }}">Geçmiş</a>
+        <a href="{{ url_for('is_takip.notes_list') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'is_takip.notes_list' }}">Notlar</a>
+        <a href="{{ url_for('is_takip.stats') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'is_takip.stats' }}">İstatistik</a>
+    </div>
+</div>
+{% block inner %}{% endblock %}
+{% endblock %}

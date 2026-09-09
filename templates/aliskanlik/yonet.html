@@ -1,0 +1,121 @@
+{% extends "aliskanlik/_layout.html" %}
+{% from "_icons.html" import icon, impact_meter %}
+{% block title %}Yönet{% endblock %}
+
+{% block inner %}
+<h2 class="page-title mt-3 mb-3">Alışkanlıkları Yönet</h2>
+
+{% if not habits %}
+<div class="card mb-3">
+    <div class="card-body text-center">
+        <p class="text-secondary">Hızlı başlangıç: aşağıdaki 8 alışkanlık — uyku, su, adım, telefonsuz sabah, öğrenme, düzen, günlük değerlendirme ve haftada 3 egzersiz — ile başlayabilirsin.</p>
+        <form method="POST" action="{{ url_for('aliskanlik.seed_defaults') }}">
+            <button type="submit" class="btn btn-primary">{{ icon('sparkles', 16) }} Hazır 8 Alışkanlığı Ekle</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Yeni Alışkanlık Ekle</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('aliskanlik.add_habit') }}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Alışkanlık adı</label>
+                    <input type="text" name="name" class="form-control" placeholder="örn. Egzersiz" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Neden? (isteğe bağlı)</label>
+                    <input type="text" name="why" class="form-control" placeholder="örn. Daha fit bir vücut için">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Etki puanı</label>
+                    <select name="impact" class="form-select">
+                        <option value="1">1 — düşük</option>
+                        <option value="2">2</option>
+                        <option value="3" selected>3 — orta</option>
+                        <option value="4">4</option>
+                        <option value="5">5 — yüksek</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Sıklık</label>
+                    <select name="frequency_type" class="form-select" id="freq-select" onchange="toggleWeeklyTarget()">
+                        <option value="gunluk">Her gün</option>
+                        <option value="haftalik">Haftada birkaç kez</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-none" id="weekly-target-field">
+                    <label class="form-label">Haftalık hedef (kaç kez)</label>
+                    <input type="number" name="weekly_target" class="form-control font-mono" min="1" max="7" value="3">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Ekle</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-3">
+    {% if not habits %}
+        <div class="card-body text-center text-secondary">Henüz alışkanlık eklemedin.</div>
+    {% else %}
+    <div class="list-group list-group-flush">
+        {% for habit in habits %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('aliskanlik.habit_detail', habit_id=habit.id) }}" class="text-reset" style="text-decoration: none; flex: 1;">
+                <div class="fw-medium">
+                    {{ habit.name }}
+                    {{ impact_meter(habit.impact) }}
+                    <span class="badge bg-secondary-lt">{{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}</span>
+                </div>
+                {% if habit.why %}<div class="text-secondary small">{{ habit.why }}</div>{% endif %}
+            </a>
+            <div class="d-flex align-items-center gap-1">
+                <a href="{{ url_for('aliskanlik.edit_habit', habit_id=habit.id) }}" class="btn btn-icon btn-sm" title="Düzenle">{{ icon('pencil', 16) }}</a>
+                <form method="POST" action="{{ url_for('aliskanlik.archive_habit', habit_id=habit.id) }}">
+                    <button type="submit" class="btn btn-icon btn-sm text-secondary" title="Arşivle">{{ icon('archive', 16) }}</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% if archived %}
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Arşivlenenler</h3></div>
+    <div class="list-group list-group-flush">
+        {% for habit in archived %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="text-secondary">
+                {{ habit.name }}
+                {% if habit.why %}<div class="small">{{ habit.why }}</div>{% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <form method="POST" action="{{ url_for('aliskanlik.unarchive_habit', habit_id=habit.id) }}">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">↩ Aktifleştir</button>
+                </form>
+                <form method="POST" action="{{ url_for('aliskanlik.delete_habit', habit_id=habit.id) }}"
+                      onsubmit="return confirm('{{ habit.name }} kalıcı olarak silinecek, geçmiş kayıtları da gidecek. Emin misin?');">
+                    <button type="submit" class="btn btn-icon btn-sm text-red" title="Kalıcı Sil">{{ icon('x', 16) }}</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<a href="{{ url_for('aliskanlik.index') }}" class="d-inline-block mt-3 text-secondary">← Bugün</a>
+
+<script>
+function toggleWeeklyTarget() {
+    const freq = document.getElementById('freq-select').value;
+    const field = document.getElementById('weekly-target-field');
+    if (freq === 'haftalik') field.classList.remove('d-none');
+    else field.classList.add('d-none');
+}
+</script>
+{% endblock %}

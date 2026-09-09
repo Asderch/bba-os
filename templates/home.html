@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}BBA OS{% endblock %}
+
+{% block content %}
+<!-- Üst satır: selamlama + tarih -->
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+    <h1 class="mb-0 bba-greeting">
+        {{ greeting }}, <span class="bba-greeting-name">Berkcan.</span>
+    </h1>
+    <div class="bba-date-tag">{{ today_str }} · {{ weekday_str }}</div>
+</div>
+
+<!-- ================= HERO: Life Score ================= -->
+<div class="bba-card bba-hero mb-3">
+    <div class="bba-hero-main">
+        <div class="bba-hero-score-block">
+            <div class="bba-label mb-1">LIFE SCORE</div>
+            {% if life_score_low or life_score is none %}
+                <div class="bba-hero-score bba-hero-score-collecting">–</div>
+                <div class="bba-hero-collecting-note">
+                    Skorun birkaç gün veri girince netleşir
+                    {%- if life_score_days %} ({{ life_score_days }}/3 gün){% endif -%}.
+                </div>
+            {% else %}
+                <div class="bba-hero-score">{{ life_score }}<span class="bba-hero-score-max">/100</span></div>
+                {% if life_score_delta is not none and life_score_delta != 0 %}
+                <div class="bba-delta-chip {{ 'up' if life_score_delta > 0 else 'down' }}">
+                    {{ '+' if life_score_delta > 0 }}{{ life_score_delta }} <span>dünden</span>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="bba-hero-secondary">
+            <div class="bba-mini-stat">
+                <div class="bba-label">MOMENTUM</div>
+                <div class="bba-mini-stat-value">
+                    {{ ('+' if momentum > 0 else '') ~ momentum ~ '%' if momentum is not none else '—' }}
+                </div>
+            </div>
+            <div class="bba-mini-stat">
+                <div class="bba-label">İSTİKRAR</div>
+                <div class="bba-mini-stat-value">
+                    {% if istikrar is not none %}
+                        {{ istikrar.good_days }}<span class="bba-mini-stat-sub">/{{ istikrar.total_days }} gün</span>
+                    {% else %}—{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 alt-boyut -->
+    <div class="bba-dims">
+        {% for key, label in [('is','İş'), ('aliskanlik','Alışkanlık'), ('finans','Finans'), ('mesai','Mesai')] %}
+        {% set v = breakdown[key] %}
+        <div class="bba-dim {{ 'is-weak' if breakdown.weakest == key and not life_score_low }}">
+            <div class="bba-dim-head">
+                <span class="bba-dim-label">{{ label }}</span>
+                <span class="bba-dim-pct">{{ v ~ '%' if v is not none else '—' }}</span>
+            </div>
+            <div class="bba-dim-track"><div class="bba-dim-fill" style="width: {{ v or 0 }}%;"></div></div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if breakdown.weakest and not life_score_low %}
+    <div class="bba-hero-hint">En büyük fırsat:
+        <b>{{ {'is':'İş Takip','aliskanlik':'Alışkanlıklar','finans':'Finans'}[breakdown.weakest] }}</b>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ================= GÜNÜN ÖNCELİKLERİ ================= -->
+<div class="bba-card mb-3">
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <div class="bba-label">GÜNÜN ÖNCELİKLERİ</div>
+        {% if priorities.total_today %}
+        <span class="bba-progress-count">{{ priorities.done_today }}/{{ priorities.total_today }} günlük iş bitti</span>
+        {% endif %}
+    </div>
+
+    {% if priorities.rows %}
+    <div class="bba-priority-list">
+        {% for p in priorities.rows %}
+        <form method="POST" action="{{ url_for('is_takip.complete_deadline_task', task_id=p.id) if p.type == 'deadline' else url_for('is_takip.toggle_daily_task', task_id=p.id) }}" class="bba-priority-row">
+            <button type="submit" class="bba-priority-check-btn" aria-label="{{ p.title }} tamamlandı olarak işaretle">
+                <span class="bba-compact-check"></span>
+            </button>
+            <span class="bba-priority-title">{{ p.title }}</span>
+            {% if p.urgency == 'gecikmis' %}<span class="bba-tag-overdue">gecikmiş</span>
+            {% elif p.urgency == 'yaklasan' %}<span class="bba-tag-soon">yaklaşıyor</span>{% endif %}
+        </form>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bba-empty-inline">
+        Bugün acil bir termin yok. Günlük işlerini
+        <a href="{{ url_for('is_takip.index') }}">İş Takip</a>'ten işaretle.
+    </div>
+    {% endif %}
+</div>
+
+<!-- ================= NELER FARK ETTİ ================= -->
+<div class="bba-card mb-3">
+    <div class="bba-label mb-2">BBA OS NELER FARK ETTİ</div>
+    {% if insights %}
+        {% for insight in insights %}
+        <div class="bba-insight-row">
+            <span class="bba-insight-icon">{{ icon(insight.icon, 16) }}</span>
+            <div>
+                <div class="bba-insight-text">{{ insight.text }}</div>
+                {% if insight.suggestion %}<div class="bba-insight-sub">{{ icon('target', 13) }} {{ insight.suggestion }}</div>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="bba-empty-inline">Veriler oluştukça buraya kişisel içgörüler düşecek.</div>
+    {% endif %}
+</div>
+
+<!-- ================= BUGÜN + YAKLAŞANLAR ================= -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="bba-card h-100">
+            <div class="bba-label mb-3">BUGÜN</div>
+            <div class="bba-today-grid">
+                <div class="bba-today-col">
+                    <div class="text-secondary small mb-1">İş</div>
+                    <div class="bba-today-number">{{ is_daily_done_today }}<span class="bba-today-sep">/{{ is_daily_count }}</span></div>
+                    {% if is_urgent_count %}<div class="bba-today-flag">{{ is_urgent_count }} termin yakın</div>{% endif %}
+                </div>
+                <div class="bba-today-col">
+                    <div class="text-secondary small mb-1">Alışkanlık</div>
+                    <div class="bba-today-number">{{ aliskanlik_done }}<span class="bba-today-sep">/{{ aliskanlik_total }}</span></div>
+                    {% set kalan = aliskanlik_total - aliskanlik_done %}
+                    {% if kalan > 0 %}<div class="bba-today-flag">{{ kalan }} tane kaldı</div>{% endif %}
+                </div>
+                <div class="bba-today-col">
+                    <div class="text-secondary small mb-1">Bugün harcama</div>
+                    <div class="bba-today-number font-mono">₺{{ '%.0f' | format(todays_expense) }}</div>
+                </div>
+                <div class="bba-today-col">
+                    <div class="text-secondary small mb-1">Mesai (bu ay)</div>
+                    {% if mesai_month_amount and gelir_gizli %}
+                    <div class="bba-today-number font-mono">{{ PARA_MASK }}</div>
+                    {% elif mesai_month_amount %}
+                    <div class="bba-today-number font-mono">≈₺{{ '{:,.0f}'.format(mesai_month_amount).replace(',', '.') }}</div>
+                    {% else %}
+                    <div class="bba-today-number font-mono">{{ '%.0f' | format(mesai_today_hours) }}s</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="bba-card h-100">
+            <div class="bba-label mb-2">YAKLAŞANLAR</div>
+            <div class="bba-upcoming-cols">
+                <div class="bba-upcoming-col">
+                    <div class="bba-upcoming-col-head">Terminli işler</div>
+                    {% for e in upcoming.isler %}
+                    <div class="bba-upcoming-item">
+                        <span class="bba-upcoming-date font-mono">{{ e.date.strftime('%d.%m') }}</span>
+                        <span class="bba-upcoming-title">{{ e.title }}</span>
+                    </div>
+                    {% else %}
+                    <div class="bba-upcoming-empty">—</div>
+                    {% endfor %}
+                </div>
+                <div class="bba-upcoming-col">
+                    <div class="bba-upcoming-col-head">Abonelikler</div>
+                    {% for e in upcoming.abonelik %}
+                    <div class="bba-upcoming-item">
+                        <span class="bba-upcoming-date font-mono">{{ e.date.strftime('%d.%m') }}</span>
+                        <span class="bba-upcoming-title">{{ e.title }}</span>
+                    </div>
+                    {% else %}
+                    <div class="bba-upcoming-empty">—</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= SON 14 GÜN ================= -->
+<div class="bba-card mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="bba-label">SON 14 GÜN</div>
+        {% if momentum is not none and momentum != 0 %}
+            <span class="bba-delta-chip {{ 'up' if momentum > 0 else 'down' }}">
+                {{ '+' if momentum > 0 }}{{ momentum }}% {{ '↗' if momentum > 0 else '↘' }}
+            </span>
+        {% endif %}
+    </div>
+    {% if trend_points_str %}
+    <svg viewBox="0 0 280 70" width="100%" height="70" preserveAspectRatio="none" style="overflow: visible;">
+        <line x1="0" y1="0" x2="280" y2="0" stroke="var(--bba-border)" stroke-width="1"/>
+        <line x1="0" y1="35" x2="280" y2="35" stroke="var(--bba-border)" stroke-width="1"/>
+        <line x1="0" y1="70" x2="280" y2="70" stroke="var(--bba-border)" stroke-width="1"/>
+        <polyline points="{{ trend_points_str }}" fill="none" stroke="var(--bba-chart-line)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        {% if trend_last_point %}
+        <circle cx="{{ trend_last_point.split(',')[0] }}" cy="{{ trend_last_point.split(',')[1] }}" r="4" fill="var(--bba-copper)"/>
+        {% endif %}
+    </svg>
+    {% else %}
+    <div class="bba-empty-inline text-center">Trend için henüz yeterli veri yok.</div>
+    {% endif %}
+</div>
+
+<div class="bba-footer-quote">
+    "Sistemini çalıştırmaya devam et. Sonuçlar zamanla gelir." — <b>BBA</b>
+</div>
+{% endblock %}

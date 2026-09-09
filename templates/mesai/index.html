@@ -1,0 +1,138 @@
+{% extends "mesai/_layout.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Mesai Takip{% endblock %}
+
+{% block inner %}
+<div class="page-header d-print-none mb-3 mt-3">
+    <div class="row g-2 align-items-center">
+        <div class="col"><h2 class="page-title">{{ month_name }} {{ year }}</h2></div>
+        <div class="col-auto ms-auto">
+            <div class="btn-list">
+                <a href="{{ url_for('mesai.index', year=prev_year, month=prev_month) }}" class="btn btn-outline-secondary btn-sm">← Önceki Ay</a>
+                <a href="{{ url_for('mesai.index', year=next_year, month=next_month) }}" class="btn btn-outline-secondary btn-sm">Sonraki Ay →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="font-weight-medium font-mono">{{ saat_1_5x }} saat</div>
+                <div class="text-secondary">Hafta İçi + Hafta Sonu</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="font-weight-medium font-mono">{{ saat_1x }} saat</div>
+                <div class="text-secondary">Resmi Tatil</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="text-secondary mb-1">Detaylı Hesaplama</div>
+                <a href="{{ url_for('mesai.hesaplama', year=year, month=month) }}" class="fw-bold">Tutarları Gör →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Mesai Ekle</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('mesai.add_overtime') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Tarih</label>
+                    <div class="date-field">
+                        <input type="hidden" name="entry_date" value="{{ today }}">
+                        <button type="button" class="form-control date-display text-start"></button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Saat</label>
+                    <input type="number" name="hours" step="0.5" min="0.5" class="form-control font-mono" placeholder="örn. 4" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Kategori</label>
+                    <select name="category" class="form-select" required>
+                        {% for value, label in categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Not</label>
+                    <input type="text" name="note" class="form-control" placeholder="örn. Stok sayımı">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Mesai Ekle</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Mesai Kayıtları</h3></div>
+    {% if not overtime_entries %}
+        <div class="card-body text-center text-secondary">Bu ay için henüz mesai kaydı yok.</div>
+    {% else %}
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead><tr><th>Tarih</th><th>Kategori</th><th>Not</th><th class="text-end">Saat</th><th class="w-1"></th></tr></thead>
+            <tbody>
+                {% for entry in overtime_entries %}
+                <tr>
+                    <td class="text-secondary font-mono small">{{ entry.entry_date | gunadi }}</td>
+                    <td><span class="badge bg-primary-lt">{{ category_labels[entry.category] }}</span></td>
+                    <td class="text-secondary">{{ entry.note or '' }}</td>
+                    <td class="text-end font-mono fw-bold">{{ entry.hours }} saat</td>
+                    <td class="text-end">
+                        <button class="btn btn-icon btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#edit-overtime-{{ entry.id }}" title="Düzenle">{{ icon('pencil', 16) }}</button>
+                        <form method="POST" action="{{ url_for('mesai.delete_overtime', entry_id=entry.id) }}" class="d-inline"
+                              onsubmit="return confirm('Bu kayıt silinecek. Emin misin?');">
+                            <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr class="collapse" id="edit-overtime-{{ entry.id }}">
+                    <td colspan="5" class="bg-body-tertiary">
+                        <form method="POST" action="{{ url_for('mesai.edit_overtime', entry_id=entry.id) }}" class="py-2">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Tarih</label>
+                                    <div class="date-field">
+                                        <input type="hidden" name="entry_date" value="{{ entry.entry_date.isoformat() }}">
+                                        <button type="button" class="form-control date-display text-start"></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Saat</label>
+                                    <input type="number" name="hours" step="0.5" min="0.5" value="{{ entry.hours }}" class="form-control font-mono" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Kategori</label>
+                                    <select name="category" class="form-select" required>
+                                        {% for value, label in categories %}
+                                            <option value="{{ value }}" {{ 'selected' if entry.category == value }}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Not</label>
+                                    <input type="text" name="note" value="{{ entry.note or '' }}" class="form-control">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm mt-3">Güncelle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

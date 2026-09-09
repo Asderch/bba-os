@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("wallet", 22) }} Finans</h2>
+    <div class="bba-subnav">
+        <a href="{{ url_for('butce.index') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'butce.index' }}">Hareketler</a>
+        <a href="{{ url_for('butce.subscriptions_list') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'butce.subscriptions_list' }}">Abonelikler</a>
+    </div>
+</div>
+{% block inner %}{% endblock %}
+{% endblock %}

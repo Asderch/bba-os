@@ -1,0 +1,143 @@
+{% extends "is_takip/_layout.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}İşleri Yönet{% endblock %}
+
+{% block inner %}
+<h2 class="page-title mt-3 mb-3">İşleri Yönet</h2>
+
+<div class="row row-cards mb-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h3 class="card-title">Günlük İşler</h3></div>
+            <div class="card-body">
+                <p class="text-secondary small">Buraya eklediğin işler her gün "Bugün" sayfasında bir kontrol listesi olarak karşına çıkar.</p>
+                <form method="POST" action="{{ url_for('is_takip.add_daily_task') }}" class="row g-2">
+                    <div class="col-12">
+                        <input type="text" name="title" class="form-control" placeholder="İş başlığı" required>
+                    </div>
+                    <div class="col-12">
+                        <input type="text" name="note" class="form-control" placeholder="Not (isteğe bağlı)">
+                    </div>
+                    {% if tags %}
+                    <div class="col-12">
+                        <select name="tag_id" class="form-select">
+                            <option value="">Etiket yok</option>
+                            {% for tag in tags %}<option value="{{ tag.id }}">{{ tag.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary w-100">Ekle</button>
+                    </div>
+                </form>
+            </div>
+            {% if daily_tasks %}
+            <div class="list-group list-group-flush">
+                {% for task in daily_tasks %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-medium">
+                            {{ task.title }}
+                            {% if task.tag %}<span class="badge ms-1" style="background: {{ task.tag.color }}22; color: {{ task.tag.color }};">{{ task.tag.name }}</span>{% endif %}
+                        </div>
+                        {% if task.note %}<div class="text-secondary small">{{ task.note }}</div>{% endif %}
+                    </div>
+                    <form method="POST" action="{{ url_for('is_takip.delete_daily_task', task_id=task.id) }}"
+                          onsubmit="return confirm('{{ task.title }} silinecek, geçmiş kayıtları da gidecek. Emin misin?');">
+                        <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h3 class="card-title">Terminli İşler</h3></div>
+            <div class="card-body">
+                <p class="text-secondary small">Bitiş tarihi olan tek seferlik işler — "Bugün" sayfasında tarihe göre sıralı ve renkli görünürler.</p>
+                <form method="POST" action="{{ url_for('is_takip.add_deadline_task') }}">
+                    <div class="mb-2">
+                        <input type="text" name="title" class="form-control" placeholder="İş başlığı" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-secondary">Termin Tarihi</label>
+                        <div class="date-field">
+                            <input type="hidden" name="due_date" value="{{ today }}">
+                            <button type="button" class="form-control date-display text-start"></button>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <input type="text" name="note" class="form-control" placeholder="Not (isteğe bağlı)">
+                    </div>
+                    {% if tags %}
+                    <div class="mb-2">
+                        <select name="tag_id" class="form-select">
+                            <option value="">Etiket yok</option>
+                            {% for tag in tags %}<option value="{{ tag.id }}">{{ tag.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary w-100">Ekle</button>
+                </form>
+            </div>
+            {% if deadline_rows %}
+            <div class="list-group list-group-flush">
+                {% for row in deadline_rows %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
+                            {{ row.task.due_date.strftime('%d.%m.%Y') }}
+                        </span>
+                        <span class="fw-medium">{{ row.task.title }}</span>
+                        {% if row.task.tag %}<span class="badge" style="background: {{ row.task.tag.color }}22; color: {{ row.task.tag.color }};">{{ row.task.tag.name }}</span>{% endif %}
+                    </div>
+                    <form method="POST" action="{{ url_for('is_takip.delete_deadline_task', task_id=row.task.id) }}">
+                        <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Etiketler</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('is_takip.add_tag') }}" class="row g-2">
+            <div class="col-md-6">
+                <input type="text" name="name" class="form-control" placeholder="Etiket adı (örn. Stok, Sipariş)" required>
+            </div>
+            <div class="col-md-4">
+                <select name="color" class="form-select">
+                    {% for color in tag_colors %}
+                        <option value="{{ color }}" style="background: {{ color }}; color: #fff;">{{ color }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Ekle</button>
+            </div>
+        </form>
+    </div>
+    {% if tags %}
+    <div class="list-group list-group-flush">
+        {% for tag in tags %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <span class="badge" style="background: {{ tag.color }}22; color: {{ tag.color }};">{{ tag.name }}</span>
+            <form method="POST" action="{{ url_for('is_takip.delete_tag', tag_id=tag.id) }}"
+                  onsubmit="return confirm('{{ tag.name }} silinecek, bu etikete sahip işlerden de kaldırılacak. Emin misin?');">
+                <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<a href="{{ url_for('is_takip.index') }}" class="d-inline-block mt-3 text-secondary">← Bugün</a>
+{% endblock %}

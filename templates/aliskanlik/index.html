@@ -1,0 +1,62 @@
+{% extends "aliskanlik/_layout.html" %}
+{% from "_icons.html" import icon, impact_meter %}
+{% block title %}Bugün{% endblock %}
+
+{% block inner %}
+<div class="page-header mt-3 mb-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title">{{ weekday_name }}, {{ today.strftime('%d.%m.%Y') }}</h2>
+            <p class="text-secondary mb-0">
+                {% if rows %}Bugün {{ done_count }} / {{ rows|length }} alışkanlığını tamamladın.{% else %}Henüz alışkanlık eklemedin.{% endif %}
+            </p>
+        </div>
+        {% if rows %}
+        <div class="col-auto">
+            <div class="card card-sm">
+                <div class="card-body text-center">
+                    <div class="h1 mb-0 font-mono">{{ today_puan }}</div>
+                    <div class="text-secondary small">/ {{ max_puan }} puan bugün</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if not rows %}
+    <div class="card">
+        <div class="card-body text-center text-secondary">
+            <p>Henüz bir alışkanlık eklemedin.</p>
+            <a href="{{ url_for('aliskanlik.manage_habits') }}" class="btn btn-primary">İlk Alışkanlığını Ekle</a>
+        </div>
+    </div>
+{% else %}
+<div class="card">
+    <div class="list-group list-group-flush">
+        {% for row in rows %}
+        <div class="list-group-item d-flex align-items-center gap-3 {{ 'bg-body-tertiary' if row.done }}">
+            <form method="POST" action="{{ url_for('aliskanlik.toggle_habit', habit_id=row.habit.id) }}">
+                <button type="submit" class="daily-check {{ 'daily-check-done' if row.done }}">{{ '✓' if row.done }}</button>
+            </form>
+            <div class="flex-fill">
+                <a href="{{ url_for('aliskanlik.habit_detail', habit_id=row.habit.id) }}" class="text-reset" style="text-decoration: none;">
+                    <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
+                        {{ row.habit.name }}
+                        {{ impact_meter(row.habit.impact) }}
+                    </div>
+                </a>
+                {% if row.habit.why %}<div class="text-secondary small">{{ row.habit.why }}</div>{% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                {% if row.streak > 0 %}<span class="badge bg-orange-lt font-mono">{{ icon('flame', 14) }} {{ row.streak }}</span>{% endif %}
+                <span class="badge bg-secondary-lt font-mono">
+                    {{ 'Bu hafta' if row.habit.frequency_type == 'haftalik' else 'Bu hafta' }} {{ row.week_count }}/{{ row.week_target }}
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

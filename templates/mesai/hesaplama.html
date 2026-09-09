@@ -1,0 +1,172 @@
+{% extends "mesai/_layout.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Hesaplama{% endblock %}
+
+{% block inner %}
+<div class="page-header d-print-none mb-3 mt-3">
+    <div class="row g-2 align-items-center">
+        <div class="col"><h2 class="page-title">{{ month_name }} {{ year }} — Hesaplama</h2></div>
+        <div class="col-auto ms-auto">
+            <div class="btn-list">
+                <a href="{{ url_for('mesai.hesaplama', year=prev_year, month=prev_month) }}" class="btn btn-outline-secondary btn-sm">← Önceki Ay</a>
+                <a href="{{ url_for('mesai.hesaplama', year=next_year, month=next_month) }}" class="btn btn-outline-secondary btn-sm">Sonraki Ay →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if calc.net_salary is none %}
+    <div class="card">
+        <div class="card-body text-center text-secondary">
+            <p>Bu ay için net maaş girilmemiş.</p>
+            <a href="{{ url_for('mesai.profil', year=year, month=month) }}" class="btn btn-primary">Profil'den Maaş Gir</a>
+        </div>
+    </div>
+{% else %}
+<div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ calc.saat_1_5x }} saat</div>
+            <div class="text-secondary">Hafta İçi + Hafta Sonu</div>
+            <div class="text-secondary small font-mono">saatlik {{ '%.2f' | format(calc.saatlik_ucret_1_5) }} ₺</div>
+        </div></div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ calc.saat_1x }} saat</div>
+            <div class="text-secondary">Resmi Tatil</div>
+            <div class="text-secondary small font-mono">saatlik {{ '%.2f' | format(calc.saatlik_ucret_1) }} ₺</div>
+        </div></div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ calc.eksik_gun }} gün</div>
+            <div class="text-secondary">Eksik Gün (Ücretsiz + Raporlu)</div>
+            <div class="text-secondary small font-mono">kesinti {{ '%.2f' | format(calc.kesinti) }} ₺</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between py-1 text-secondary"><span>Net Maaş</span><span class="font-mono">{{ '%.2f' | format(calc.net_salary) }} ₺</span></div>
+        <div class="d-flex justify-content-between py-1 text-secondary"><span>+ Mesai Tutarı</span><span class="font-mono">{{ '%.2f' | format(calc.mesai_tutari) }} ₺</span></div>
+        <div class="d-flex justify-content-between py-1 text-secondary"><span>− Kesinti</span><span class="font-mono">{{ '%.2f' | format(calc.kesinti) }} ₺</span></div>
+        <div class="d-flex justify-content-between pt-3 mt-2 border-top">
+            <span class="fw-bold">Toplam Alınacak Ücret</span>
+            <span class="fw-bold font-mono text-primary fs-3">{{ '%.2f' | format(calc.toplam_alinacak_ucret) }} ₺</span>
+        </div>
+    </div>
+</div>
+
+{% if calc.mesai_tutari %}
+<div class="card mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div class="fw-medium">{{ '%.2f' | format(calc.mesai_tutari) }} ₺ mesai tutarını Bütçe Takip'e aktar</div>
+            <div class="text-secondary small">Bu ayın mesai kazancı, Bütçe Takip'te "Mesai Geliri" olarak gelir kaydına düşer.</div>
+        </div>
+        <form method="POST" action="{{ url_for('mesai.transfer_to_butce') }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <button type="submit" class="btn btn-outline-primary">Bütçe'ye Aktar</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">İzin / Eksik Gün Ekle</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('mesai.add_leave') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Tarih</label>
+                    <div class="date-field">
+                        <input type="hidden" name="entry_date" value="{{ today }}">
+                        <button type="button" class="form-control date-display text-start"></button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Gün Sayısı</label>
+                    <input type="number" name="days" step="0.5" min="0.5" class="form-control font-mono" placeholder="örn. 1" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tür</label>
+                    <select name="leave_type" class="form-select" required>
+                        {% for value, label in leave_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Not</label>
+                    <input type="text" name="note" class="form-control" placeholder="örn. Grip">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-outline-primary mt-3">İzin Ekle</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">İzin / Eksik Gün Kayıtları</h3></div>
+    {% if not leave_entries %}
+        <div class="card-body text-center text-secondary">Bu ay için izin/eksik gün kaydı yok.</div>
+    {% else %}
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead><tr><th>Tarih</th><th>Tür</th><th>Not</th><th class="text-end">Gün</th><th class="w-1"></th></tr></thead>
+            <tbody>
+                {% for entry in leave_entries %}
+                <tr>
+                    <td class="text-secondary font-mono small">{{ entry.entry_date | gunadi }}</td>
+                    <td><span class="badge bg-secondary-lt">{{ leave_type_labels[entry.leave_type] }}</span></td>
+                    <td class="text-secondary">{{ entry.note or '' }}</td>
+                    <td class="text-end font-mono fw-bold">{{ entry.days }} gün</td>
+                    <td class="text-end">
+                        <button class="btn btn-icon btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#edit-leave-{{ entry.id }}" title="Düzenle">{{ icon('pencil', 16) }}</button>
+                        <form method="POST" action="{{ url_for('mesai.delete_leave', entry_id=entry.id) }}" class="d-inline"
+                              onsubmit="return confirm('Bu kayıt silinecek. Emin misin?');">
+                            <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr class="collapse" id="edit-leave-{{ entry.id }}">
+                    <td colspan="5" class="bg-body-tertiary">
+                        <form method="POST" action="{{ url_for('mesai.edit_leave', entry_id=entry.id) }}" class="py-2">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Tarih</label>
+                                    <div class="date-field">
+                                        <input type="hidden" name="entry_date" value="{{ entry.entry_date.isoformat() }}">
+                                        <button type="button" class="form-control date-display text-start"></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Gün Sayısı</label>
+                                    <input type="number" name="days" step="0.5" min="0.5" value="{{ entry.days }}" class="form-control font-mono" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Tür</label>
+                                    <select name="leave_type" class="form-select" required>
+                                        {% for value, label in leave_types %}
+                                            <option value="{{ value }}" {{ 'selected' if entry.leave_type == value }}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Not</label>
+                                    <input type="text" name="note" value="{{ entry.note or '' }}" class="form-control">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm mt-3">Güncelle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

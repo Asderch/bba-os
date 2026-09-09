@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("clock", 22) }} Mesai</h2>
+    <div class="bba-subnav">
+        <a href="{{ url_for('mesai.index') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'mesai.index' }}">Mesai Saatleri</a>
+        <a href="{{ url_for('mesai.hesaplama') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'mesai.hesaplama' }}">Hesaplama</a>
+        <a href="{{ url_for('mesai.profil') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'mesai.profil' }}">Profil</a>
+    </div>
+</div>
+{% if entered_months is defined and entered_months %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    {% for ey, em in entered_months %}
+    <a href="{{ url_for(request.endpoint if request.endpoint in ['mesai.index','mesai.hesaplama'] else 'mesai.index', year=ey, month=em) }}"
+       class="btn btn-sm {{ 'btn-primary' if (year is defined and ey == year and em == month) else 'btn-outline-secondary' }}">
+        {{ tr_months[em - 1] }} {{ ey }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% block inner %}{% endblock %}
+{% endblock %}

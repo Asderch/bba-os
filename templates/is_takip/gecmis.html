@@ -1,0 +1,49 @@
+{% extends "is_takip/_layout.html" %}
+{% block title %}Geçmiş{% endblock %}
+
+{% block inner %}
+<h2 class="page-title mt-3 mb-3">Geçmiş</h2>
+
+<div class="row row-cards">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h3 class="card-title">Tamamlanan Terminli İşler</h3></div>
+            {% if not completed_deadlines %}
+                <div class="card-body text-center text-secondary">Henüz tamamlanan bir iş yok.</div>
+            {% else %}
+            <div class="list-group list-group-flush">
+                {% for task in completed_deadlines %}
+                <div class="list-group-item">
+                    <div class="fw-medium text-decoration-line-through text-secondary">{{ task.title }}</div>
+                    <div class="text-secondary small">
+                        Termin: {{ task.due_date.strftime('%d.%m.%Y') }} · Tamamlandı: {{ task.done_at.strftime('%d.%m.%Y') }}
+                        {% if task.note %} — {{ task.note }}{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h3 class="card-title">Günlük İş Geçmişi</h3></div>
+            {% if not daily_history %}
+                <div class="card-body text-center text-secondary">Henüz tamamlanan bir günlük iş yok.</div>
+            {% else %}
+            <div class="list-group list-group-flush">
+                {% for entry in daily_history %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="fw-medium">{{ entry.task.title }}</span>
+                    <span class="text-secondary small">{{ entry.completion_date | kisatarih }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('is_takip.index') }}" class="d-inline-block mt-3 text-secondary">← Bugün</a>
+{% endblock %}

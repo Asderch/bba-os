@@ -1,0 +1,148 @@
+{% extends "butce/_layout.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Abonelikler{% endblock %}
+
+{% block inner %}
+<h2 class="page-title mt-3 mb-3">Abonelikler</h2>
+
+<div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ '%.2f' | format(total_monthly) }} ₺</div>
+            <div class="text-secondary">Toplam Aylık Maliyet</div>
+        </div></div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ '%.2f' | format(total_yearly) }} ₺</div>
+            <div class="text-secondary">Toplam Yıllık Maliyet</div>
+        </div></div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+        <div class="card card-sm"><div class="card-body">
+            <div class="font-weight-medium font-mono">{{ sub_count }}</div>
+            <div class="text-secondary">Aktif Abonelik</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Yeni Abonelik Ekle</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('butce.add_subscription') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">İsim</label>
+                    <input type="text" name="name" class="form-control" placeholder="örn. Netflix" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tutar (₺)</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control font-mono" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Döngü</label>
+                    <select name="cycle" class="form-select">
+                        <option value="aylik">Aylık</option>
+                        <option value="yillik">Yıllık</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Yenilenme Tarihi</label>
+                    <div class="date-field">
+                        <input type="hidden" name="next_renewal" value="{{ today }}">
+                        <button type="button" class="form-control date-display text-start"></button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Uyarı Eşiği (gün)</label>
+                    <input type="number" name="reminder_days" value="3" min="0" class="form-control font-mono">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Kategori</label>
+                    <select name="category_id" class="form-select">
+                        <option value="">—</option>
+                        {% for cat in categories %}<option value="{{ cat.id }}">{{ cat.name }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-3">
+                <input type="text" name="note" class="form-control" placeholder="Not (isteğe bağlı)">
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Ekle</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Abonelik Listesi</h3></div>
+    {% if not rows %}
+        <div class="card-body text-center text-secondary">Henüz abonelik eklemedin.</div>
+    {% else %}
+    <div class="list-group list-group-flush">
+        {% for row in rows %}
+        <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
+                    {% if row.urgency == 'gecikmis' %}{{ -row.days_left }} gün gecikti
+                    {% elif row.days_left == 0 %}Bugün
+                    {% else %}{{ row.days_left }} gün kaldı{% endif %}
+                </span>
+                <div>
+                    <div class="fw-medium">
+                        {{ row.sub.name }}
+                        {% if row.sub.category %}<span class="badge" style="background: {{ row.sub.category.color }}22; color: {{ row.sub.category.color }};">{{ row.sub.category.name }}</span>{% endif %}
+                    </div>
+                    <div class="text-secondary small font-mono">
+                        {{ '%.2f' | format(row.sub.amount) }} ₺ / {{ 'ay' if row.sub.cycle == 'aylik' else 'yıl' }}
+                        · {{ row.sub.next_renewal.strftime('%d.%m.%Y') }}
+                        {% if row.sub.note %} — {{ row.sub.note }}{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <form method="POST" action="{{ url_for('butce.renew_subscription', sub_id=row.sub.id) }}">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Yenilendi</button>
+                </form>
+                <form method="POST" action="{{ url_for('butce.delete_subscription', sub_id=row.sub.id) }}"
+                      onsubmit="return confirm('{{ row.sub.name }} aboneliği kaldırılacak. Emin misin?');">
+                    <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Kategoriler</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('butce.add_subscription_category') }}" class="row g-2">
+            <div class="col-md-6">
+                <input type="text" name="name" class="form-control" placeholder="Kategori adı (örn. Bulut, Yayın)" required>
+            </div>
+            <div class="col-md-4">
+                <select name="color" class="form-select">
+                    {% for color in sub_colors %}<option value="{{ color }}">{{ color }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Ekle</button>
+            </div>
+        </form>
+    </div>
+    {% if categories %}
+    <div class="list-group list-group-flush">
+        {% for cat in categories %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <span class="badge" style="background: {{ cat.color }}22; color: {{ cat.color }};">{{ cat.name }}</span>
+            <form method="POST" action="{{ url_for('butce.delete_subscription_category', cat_id=cat.id) }}"
+                  onsubmit="return confirm('{{ cat.name }} silinecek. Emin misin?');">
+                <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "mesai/_layout.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Profil{% endblock %}
+
+{% block inner %}
+<h2 class="page-title mt-3 mb-1">Profil</h2>
+<p class="text-secondary mb-3">Aylık net maaşını buradan yönetiyorsun. Yeni bir ay için maaş girmezsen, mesai hesaplaması "Hesaplama" sayfasında yapılamaz.</p>
+
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">{{ month_name }} {{ year }} Net Maaşı</h3></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('mesai.set_salary') }}" class="d-flex gap-2">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="number" step="0.01" name="net_salary" class="form-control font-mono" placeholder="örn. 25778"
+                   value="{{ current_salary if current_salary is not none else '' }}" required>
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+        </form>
+    </div>
+</div>
+
+{% if entered_months %}
+<h3 class="mb-2">Ay Seç</h3>
+<div class="d-flex flex-wrap gap-2 mb-3">
+    {% for ey, em in entered_months %}
+        <a href="{{ url_for('mesai.profil', year=ey, month=em) }}"
+           class="btn btn-sm {{ 'btn-primary' if ey == year and em == month else 'btn-outline-secondary' }}">{{ tr_months[em - 1] }} {{ ey }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Tüm Girilen Maaşlar</h3></div>
+    {% if not all_salaries %}
+        <div class="card-body text-center text-secondary">Henüz maaş kaydı yok.</div>
+    {% else %}
+    <div class="list-group list-group-flush">
+        {% for row in all_salaries %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ tr_months[row.month - 1] }} {{ row.year }}</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="font-mono fw-bold">{{ '%.2f' | format(row.net_salary) }} ₺</span>
+                <a href="{{ url_for('mesai.profil', year=row.year, month=row.month) }}" class="btn btn-icon btn-sm" title="Düzenle">{{ icon('pencil', 16) }}</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
