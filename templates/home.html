@@ -34,12 +34,6 @@
 
         <div class="bba-hero-secondary">
             <div class="bba-mini-stat">
-                <div class="bba-label">MOMENTUM</div>
-                <div class="bba-mini-stat-value">
-                    {{ ('+' if momentum > 0 else '') ~ momentum ~ '%' if momentum is not none else '—' }}
-                </div>
-            </div>
-            <div class="bba-mini-stat">
                 <div class="bba-label">İSTİKRAR</div>
                 <div class="bba-mini-stat-value">
                     {% if istikrar is not none %}
@@ -47,12 +41,18 @@
                     {% else %}—{% endif %}
                 </div>
             </div>
+            {% if breakdown.mesai_saat %}
+            <div class="bba-mini-stat">
+                <div class="bba-label">MESAİ (BU AY)</div>
+                <div class="bba-mini-stat-value">{{ breakdown.mesai_saat }}<span class="bba-mini-stat-sub"> saat</span></div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- 4 alt-boyut -->
-    <div class="bba-dims">
-        {% for key, label in [('is','İş'), ('aliskanlik','Alışkanlık'), ('finans','Finans'), ('mesai','Mesai')] %}
+    <!-- 3 puanlı alt-boyut (mesai puan değil, üstte bilgi) -->
+    <div class="bba-dims bba-dims-3">
+        {% for key, label in [('is','İş'), ('aliskanlik','Alışkanlık'), ('finans','Finans')] %}
         {% set v = breakdown[key] %}
         <div class="bba-dim {{ 'is-weak' if breakdown.weakest == key and not life_score_low }}">
             <div class="bba-dim-head">
@@ -123,11 +123,11 @@
     <div class="col-lg-7">
         <div class="bba-card h-100">
             <div class="bba-label mb-3">BUGÜN</div>
-            <div class="bba-today-grid">
+            <div class="bba-today-grid bba-today-grid-3">
                 <div class="bba-today-col">
                     <div class="text-secondary small mb-1">İş</div>
                     <div class="bba-today-number">{{ is_daily_done_today }}<span class="bba-today-sep">/{{ is_daily_count }}</span></div>
-                    {% if is_urgent_count %}<div class="bba-today-flag">{{ is_urgent_count }} termin yakın</div>{% endif %}
+                    {% if is_urgent_count %}<div class="bba-today-flag">{{ is_urgent_count }} acil termin</div>{% endif %}
                 </div>
                 <div class="bba-today-col">
                     <div class="text-secondary small mb-1">Alışkanlık</div>
@@ -138,15 +138,8 @@
                 <div class="bba-today-col">
                     <div class="text-secondary small mb-1">Bugün harcama</div>
                     <div class="bba-today-number font-mono">₺{{ '%.0f' | format(todays_expense) }}</div>
-                </div>
-                <div class="bba-today-col">
-                    <div class="text-secondary small mb-1">Mesai (bu ay)</div>
-                    {% if mesai_month_amount and gelir_gizli %}
-                    <div class="bba-today-number font-mono">{{ PARA_MASK }}</div>
-                    {% elif mesai_month_amount %}
-                    <div class="bba-today-number font-mono">≈₺{{ '{:,.0f}'.format(mesai_month_amount).replace(',', '.') }}</div>
-                    {% else %}
-                    <div class="bba-today-number font-mono">{{ '%.0f' | format(mesai_today_hours) }}s</div>
+                    {% if mesai_month_amount and not gelir_gizli %}
+                    <div class="bba-today-flag">bu ay mesai ≈₺{{ '{:,.0f}'.format(mesai_month_amount).replace(',', '.') }}</div>
                     {% endif %}
                 </div>
             </div>
@@ -189,7 +182,7 @@
         <div class="bba-label">SON 14 GÜN</div>
         {% if momentum is not none and momentum != 0 %}
             <span class="bba-delta-chip {{ 'up' if momentum > 0 else 'down' }}">
-                {{ '+' if momentum > 0 }}{{ momentum }}% {{ '↗' if momentum > 0 else '↘' }}
+                {{ '+' if momentum > 0 }}{{ momentum }}% <span>momentum</span>
             </span>
         {% endif %}
     </div>

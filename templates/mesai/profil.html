@@ -9,6 +9,14 @@
 <div class="card mb-3">
     <div class="card-header"><h3 class="card-title">{{ month_name }} {{ year }} Net Maaşı</h3></div>
     <div class="card-body">
+        {% if gelir_gizli %}
+        <div class="d-flex align-items-center gap-2 text-secondary">
+            <span>Gelirler gizli. Maaş girmek/düzenlemek için:</span>
+            <form method="POST" action="{{ url_for('butce.toggle_gelir_gizli') }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Gelirleri göster</button>
+            </form>
+        </div>
+        {% else %}
         <form method="POST" action="{{ url_for('mesai.set_salary') }}" class="d-flex gap-2">
             <input type="hidden" name="year" value="{{ year }}">
             <input type="hidden" name="month" value="{{ month }}">
@@ -16,6 +24,7 @@
                    value="{{ current_salary if current_salary is not none else '' }}" required>
             <button type="submit" class="btn btn-primary">Kaydet</button>
         </form>
+        {% endif %}
     </div>
 </div>
 
@@ -39,7 +48,7 @@
         <div class="list-group-item d-flex justify-content-between align-items-center">
             <span>{{ tr_months[row.month - 1] }} {{ row.year }}</span>
             <div class="d-flex align-items-center gap-2">
-                <span class="font-mono fw-bold">{{ '%.2f' | format(row.net_salary) }} ₺</span>
+                <span class="font-mono fw-bold">{{ para_gizle(row.net_salary) }}</span>
                 <a href="{{ url_for('mesai.profil', year=row.year, month=row.month) }}" class="btn btn-icon btn-sm" title="Düzenle">{{ icon('pencil', 16) }}</a>
             </div>
         </div>

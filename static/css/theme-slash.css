@@ -180,12 +180,13 @@ textarea:focus-visible, [tabindex]:focus-visible,
 .bba-mini-stat-value { font-family: var(--app-mono); font-size: 1.5rem; font-weight: 600; color: var(--bba-text); margin-top: var(--space-1); font-variant-numeric: tabular-nums; }
 .bba-mini-stat-sub { font-size: 0.8rem; color: var(--bba-text-muted); }
 
-/* 4 alt-boyut */
+/* alt-boyut çubukları (3 puanlı boyut) */
 .bba-dims { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-top: var(--space-5); }
+.bba-dims-3 { grid-template-columns: repeat(3, 1fr); }
 .bba-dim-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .bba-dim-label { font-size: 0.78rem; color: var(--bba-text-muted); }
 .bba-dim-pct { font-size: 0.8rem; font-family: var(--app-mono); color: var(--bba-text); }
-.bba-dim-track { height: 3px; border-radius: var(--radius-pill); background: var(--bba-border); overflow: hidden; }
+.bba-dim-track { height: 4px; border-radius: var(--radius-pill); background: var(--bba-border); overflow: hidden; }
 .bba-dim-fill { height: 100%; background: var(--bba-text-muted); border-radius: var(--radius-pill); }
 .bba-dim.is-weak .bba-dim-fill { background: var(--bba-copper); }
 .bba-dim.is-weak .bba-dim-label { color: var(--bba-copper); }
@@ -232,6 +233,7 @@ textarea:focus-visible, [tabindex]:focus-visible,
 /* Bugün şeridi */
 .bba-today-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
 @media (min-width: 640px) { .bba-today-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 640px) { .bba-today-grid-3 { grid-template-columns: repeat(3, 1fr); } }
 .bba-today-number { font-family: var(--app-mono); font-size: 1.5rem; font-weight: 600; color: var(--bba-white); font-variant-numeric: tabular-nums; }
 .bba-today-sep { color: var(--bba-text-muted); font-size: 1rem; }
 .bba-today-flag { font-size: 0.72rem; color: var(--bba-copper); margin-top: 4px; }
@@ -291,5 +293,5 @@ textarea:focus-visible, [tabindex]:focus-visible,
     .bba-hamburger-label { font-size: 0.85rem; font-weight: 600; color: var(--bba-text-muted); }
     .bba-hero-score { font-size: 3rem; }
     .bba-hero-secondary { gap: var(--space-4); }
-    .bba-dims { grid-template-columns: repeat(2, 1fr); }
+    .bba-dims, .bba-dims-3 { grid-template-columns: repeat(2, 1fr); }
 }

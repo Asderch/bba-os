@@ -28,33 +28,33 @@
         <div class="card card-sm"><div class="card-body">
             <div class="font-weight-medium font-mono">{{ calc.saat_1_5x }} saat</div>
             <div class="text-secondary">Hafta İçi + Hafta Sonu</div>
-            <div class="text-secondary small font-mono">saatlik {{ '%.2f' | format(calc.saatlik_ucret_1_5) }} ₺</div>
+            <div class="text-secondary small font-mono">saatlik {{ para_gizle(calc.saatlik_ucret_1_5) }}</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-lg-4">
         <div class="card card-sm"><div class="card-body">
             <div class="font-weight-medium font-mono">{{ calc.saat_1x }} saat</div>
             <div class="text-secondary">Resmi Tatil</div>
-            <div class="text-secondary small font-mono">saatlik {{ '%.2f' | format(calc.saatlik_ucret_1) }} ₺</div>
+            <div class="text-secondary small font-mono">saatlik {{ para_gizle(calc.saatlik_ucret_1) }}</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-lg-4">
         <div class="card card-sm"><div class="card-body">
             <div class="font-weight-medium font-mono">{{ calc.eksik_gun }} gün</div>
             <div class="text-secondary">Eksik Gün (Ücretsiz + Raporlu)</div>
-            <div class="text-secondary small font-mono">kesinti {{ '%.2f' | format(calc.kesinti) }} ₺</div>
+            <div class="text-secondary small font-mono">kesinti {{ para_gizle(calc.kesinti) }}</div>
         </div></div>
     </div>
 </div>
 
 <div class="card mb-3">
     <div class="card-body">
-        <div class="d-flex justify-content-between py-1 text-secondary"><span>Net Maaş</span><span class="font-mono">{{ '%.2f' | format(calc.net_salary) }} ₺</span></div>
-        <div class="d-flex justify-content-between py-1 text-secondary"><span>+ Mesai Tutarı</span><span class="font-mono">{{ '%.2f' | format(calc.mesai_tutari) }} ₺</span></div>
-        <div class="d-flex justify-content-between py-1 text-secondary"><span>− Kesinti</span><span class="font-mono">{{ '%.2f' | format(calc.kesinti) }} ₺</span></div>
+        <div class="d-flex justify-content-between py-1 text-secondary"><span>Net Maaş</span><span class="font-mono">{{ para_gizle(calc.net_salary) }}</span></div>
+        <div class="d-flex justify-content-between py-1 text-secondary"><span>+ Mesai Tutarı</span><span class="font-mono">{{ para_gizle(calc.mesai_tutari) }}</span></div>
+        <div class="d-flex justify-content-between py-1 text-secondary"><span>− Kesinti</span><span class="font-mono">{{ para_gizle(calc.kesinti) }}</span></div>
         <div class="d-flex justify-content-between pt-3 mt-2 border-top">
             <span class="fw-bold">Toplam Alınacak Ücret</span>
-            <span class="fw-bold font-mono text-primary fs-3">{{ '%.2f' | format(calc.toplam_alinacak_ucret) }} ₺</span>
+            <span class="fw-bold font-mono text-primary fs-3">{{ para_gizle(calc.toplam_alinacak_ucret) }}</span>
         </div>
     </div>
 </div>
@@ -63,7 +63,7 @@
 <div class="card mb-3">
     <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <div class="fw-medium">{{ '%.2f' | format(calc.mesai_tutari) }} ₺ mesai tutarını Bütçe Takip'e aktar</div>
+            <div class="fw-medium">{{ para_gizle(calc.mesai_tutari) }} mesai tutarını Bütçe Takip'e aktar</div>
             <div class="text-secondary small">Bu ayın mesai kazancı, Bütçe Takip'te "Mesai Geliri" olarak gelir kaydına düşer.</div>
         </div>
         <form method="POST" action="{{ url_for('mesai.transfer_to_butce') }}">

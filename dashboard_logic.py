@@ -12,12 +12,13 @@ import calendar
 from datetime import timedelta
 
 from extensions import db
+from common import TR_MONTHS, TR_WEEKDAYS
+from salary import calculate_salary
 from models import (
     DailyTask, DailyTaskCompletion, DeadlineTask,
     Habit, HabitCompletion, OvertimeEntry, LeaveEntry, Transaction, MonthlyGoal, Subscription,
 )
 
-XP_PER_LEVEL = 1000
 IYI_GUN_ESIGI = 50  # blended günlük performans bu yüzdenin üzerindeyse "iyi gün" sayılır
 CONTEXT_LOOKBACK_DAYS = 90  # tüm alt hesaplamaların ihtiyaç duyduğu en geniş pencere
 
@@ -63,13 +64,18 @@ class DashboardContext:
             if c.habit_id in habit_ids:  # arşivlenmiş alışkanlıklar günlük performansa katılmasın
                 self.habit_done_by_date.setdefault(c.completion_date, set()).add(c.habit_id)
 
-        # Bu ayın bütçe hedefi + net durumu + mesai saati — BİR KEZ çekilir,
-        # compute_life_score / life_score_breakdown / monthly_balance hepsi
+        # Bu ayın bütçe hedefi + net durumu + mesai kayıtları — BİR KEZ çekilir,
+        # compute_life_score / life_score_breakdown / build_home_context hepsi
         # buradan okur (eskiden compute_life_score her çağrıda ayrı sorgu
         # atıyordu, life_score_history bunu 14 kez çağırıyordu → 28+ sorgu).
+        # Pencere: tüm ay (month_start..month_end). Mesai/izin kayıtları
+        # pratikte geçmişe yazıldığından "bugüne kadar" ile aynı sonucu verir
+        # ama pencereyi her yerde eşit tutmak tutarlılık için önemli.
         month_start = today.replace(day=1)
         month_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
         self.month_start = month_start
+        self.month_end = month_end
+        self.month_days_total = calendar.monthrange(today.year, today.month)[1]
         goal = MonthlyGoal.query.filter_by(year=today.year, month=today.month).first()
         self.month_goal_amount = goal.target_amount if (goal and goal.target_amount > 0) else None
         month_txs = Transaction.query.filter(
@@ -78,11 +84,13 @@ class DashboardContext:
         self.month_income = sum(t.amount for t in month_txs if t.kind == "gelir")
         self.month_expense = sum(t.amount for t in month_txs if t.kind == "gider")
         self.month_net = self.month_income - self.month_expense
-        self.month_overtime_hours = (
-            db.session.query(db.func.sum(OvertimeEntry.hours)).filter(
-                OvertimeEntry.entry_date >= month_start, OvertimeEntry.entry_date <= today
-            ).scalar() or 0
-        )
+        self.month_overtime = OvertimeEntry.query.filter(
+            OvertimeEntry.entry_date >= month_start, OvertimeEntry.entry_date <= month_end
+        ).all()
+        self.month_leave = LeaveEntry.query.filter(
+            LeaveEntry.entry_date >= month_start, LeaveEntry.entry_date <= month_end
+        ).all()
+        self.month_overtime_hours = sum(e.hours for e in self.month_overtime)
 
     @staticmethod
     def _compute_activity_start(today):
@@ -148,19 +156,36 @@ def compute_life_score(ctx, for_day=None):
         parts.append((al_pct_today + al_week_avg) / 2)
 
     # Bütçe boyutu ctx'te önceden hesaplanan bu-ay verisinden (basitleştirme:
-    # geçmiş günler için de bu ayın durumu kullanılır).
-    if ctx.month_goal_amount:
-        parts.append(min(100, max(0, ctx.month_net / ctx.month_goal_amount * 100)))
+    # geçmiş günler için de bu ayın durumu kullanılır). Uygulama kullanılmaya
+    # başlanmadan önceki günler için EKLENMEZ — yoksa hedef tanımlıyken
+    # compute_life_score hiçbir gün None dönmez ve trend, olmayan bir geçmiş
+    # için sahte "sadece-finans" puan üretir.
+    if ctx.month_goal_amount and day >= ctx.activity_start:
+        parts.append(_finans_pace_pct(ctx))
 
     if not parts:
         return None
     return round(sum(parts) / len(parts))
 
 
-# Mesai alt-boyutu için "dolu" kabul edilen aylık fazla mesai saati (kaba
-# referans; kesin bir hedef kavramı yok).
-MESAI_AYLIK_REF_SAAT = 40
+def _finans_pace_pct(ctx):
+    """
+    Bütçe boyutu: net birikimin, ayın geçen kısmına göre BEKLENEN tempoya
+    oranı (0-100). Düz `net/hedef` değil — çünkü maaş ay ortasında girildiği
+    için ayın ilk yarısı net hep negatif/sıfır çıkıyor ve "en büyük fırsat
+    hep Finans" oluyordu.
+    """
+    if not ctx.month_goal_amount:
+        return 0
+    elapsed = max(1, ctx.today.day) / ctx.month_days_total
+    pace_target = ctx.month_goal_amount * elapsed
+    if pace_target <= 0:
+        return 0
+    return min(100, max(0, ctx.month_net / pace_target * 100))
+
+
 MIN_LIFESCORE_DAYS = 3  # bundan az günlük veriyle Life Score göstermek yerine "toplanıyor" denir
+FINANS_GUVENILMEZ_GUN = 10  # ayın ilk bu kadar günü Finans boyutu "en zayıf" seçilmez
 
 
 def _blend_today_week(today_val, week_vals):
@@ -173,9 +198,11 @@ def _blend_today_week(today_val, week_vals):
 
 def life_score_breakdown(ctx):
     """
-    Life Score'un 4 alt-boyutu (İş / Alışkanlık / Finans / Mesai) — her biri
-    0-100 veya veri yoksa None. "78 — ama alışkanlıkta gelişim alanı var"
-    tarzı bir okuma için: sayı bir not değil, nereye dokunacağını söyleyen harita.
+    Life Score'un 3 puanlı boyutu (İş / Alışkanlık / Finans) — her biri 0-100
+    veya veri yoksa None. "78 — ama alışkanlıkta gelişim alanı var" tarzı bir
+    okuma için: sayı bir not değil, nereye dokunacağını söyleyen harita.
+    Mesai bir PUAN değil (azaltılabilir/opsiyonel bir emek); ayrı bir bilgi
+    olarak `mesai_saat` döner, çubuk/skor yok.
     """
     day = ctx.today
     week = [day - timedelta(days=i) for i in range(7)]
@@ -188,24 +215,24 @@ def life_score_breakdown(ctx):
         ctx.daily_aliskanlik_pct(day),
         [v for v in (ctx.daily_aliskanlik_pct(d) for d in week) if v is not None],
     )
-    fin_b = None
-    if ctx.month_goal_amount:
-        fin_b = min(100, max(0, ctx.month_net / ctx.month_goal_amount * 100))
-    mesai_b = None
-    if ctx.month_overtime_hours:
-        mesai_b = min(100, ctx.month_overtime_hours / MESAI_AYLIK_REF_SAAT * 100)
+    fin_b = _finans_pace_pct(ctx) if ctx.month_goal_amount else None
 
     def r(v):
         return round(v) if v is not None else None
 
+    # "En zayıf" seçimi: ayın ilk günlerinde Finans yapısal olarak güvenilmez
+    # (maaş henüz girilmemiş) → o dönemde Finans'ı yarıştan çıkar.
+    weak_candidates = [("is", is_b), ("aliskanlik", al_b)]
+    if fin_b is not None and ctx.today.day > FINANS_GUVENILMEZ_GUN:
+        weak_candidates.append(("finans", fin_b))
+    scored = [(k, v) for k, v in weak_candidates if v is not None]
+    weakest = min(scored, key=lambda kv: kv[1])[0] if scored else None
+
+    h = ctx.month_overtime_hours
     return {
-        "is": r(is_b), "aliskanlik": r(al_b),
-        "finans": r(fin_b), "mesai": r(mesai_b),
-        # hangi boyut en düşük (odak önerisi için)
-        "weakest": min(
-            (("is", is_b), ("aliskanlik", al_b), ("finans", fin_b)),
-            key=lambda kv: kv[1] if kv[1] is not None else 999,
-        )[0] if any(v is not None for v in (is_b, al_b, fin_b)) else None,
+        "is": r(is_b), "aliskanlik": r(al_b), "finans": r(fin_b),
+        "mesai_saat": (int(h) if h == int(h) else round(h, 1)) if h else 0,
+        "weakest": weakest,
     }
 
 
@@ -234,31 +261,6 @@ def life_score_delta(ctx):
     if today_score is None or yesterday_score is None:
         return None
     return today_score - yesterday_score
-
-
-# ----------------------------------------------------------------------
-def compute_xp():
-    """Mevcut tamamlama kayıtlarından toplam XP türetir (ayrı bir log tablosu yok)."""
-    xp = 0
-    xp += DailyTaskCompletion.query.count() * 10
-    xp += DeadlineTask.query.filter_by(done=True).count() * 25
-    xp += OvertimeEntry.query.count() * 10
-
-    habit_completions = HabitCompletion.query.join(Habit).all()
-    xp += sum(c.habit.impact * 5 for c in habit_completions)
-
-    return xp
-
-
-def level_info(xp):
-    level = xp // XP_PER_LEVEL + 1
-    progress_in_level = xp % XP_PER_LEVEL
-    progress_pct = round(progress_in_level / XP_PER_LEVEL * 100)
-    return {
-        "level": level, "xp": xp,
-        "progress_in_level": progress_in_level, "xp_per_level": XP_PER_LEVEL,
-        "progress_pct": progress_pct,
-    }
 
 
 # ----------------------------------------------------------------------
@@ -302,72 +304,6 @@ def compute_istikrar(ctx):
         "good_days": good_days,
         "total_days": len(valid),
     }
-
-
-# ----------------------------------------------------------------------
-def monthly_balance(ctx):
-    """
-    4 modülün bu ay (ay başından bugüne) performans yüzdesi ('Bu Ay' widget'ı için).
-    Not: Finans ve Mesai için sabit bir 'hedef' kavramı olmadığından basit
-    referans değerler kullanılıyor (Finans: varsa aylık hedef yüzdesi,
-    Mesai: ayda 40 saat = dolu kabul edilir) - kesin ölçüm değil, kabaca
-    bir denge göstergesi.
-    """
-    month_start = ctx.today.replace(day=1)
-    month_days = [month_start + timedelta(days=i) for i in range((ctx.today - month_start).days + 1)]
-
-    is_vals = [v for v in (ctx.daily_is_pct(d) for d in month_days) if v is not None]
-    is_pct = round(sum(is_vals) / len(is_vals)) if is_vals else None
-
-    al_vals = [v for v in (ctx.daily_aliskanlik_pct(d) for d in month_days) if v is not None]
-    al_pct = round(sum(al_vals) / len(al_vals)) if al_vals else None
-
-    txs = Transaction.query.filter(
-        Transaction.entry_date >= month_start, Transaction.entry_date <= ctx.today
-    ).all()
-    month_net = sum(t.amount for t in txs if t.kind == "gelir") - sum(t.amount for t in txs if t.kind == "gider")
-    goal = MonthlyGoal.query.filter_by(year=ctx.today.year, month=ctx.today.month).first()
-    if goal and goal.target_amount > 0:
-        finans_pct = round(min(100, max(0, month_net / goal.target_amount * 100)))
-    else:
-        finans_pct = None
-
-    month_hours = db.session.query(db.func.sum(OvertimeEntry.hours)).filter(
-        OvertimeEntry.entry_date >= month_start, OvertimeEntry.entry_date <= ctx.today
-    ).scalar() or 0
-    mesai_pct = round(min(100, month_hours / 40 * 100)) if month_hours else 0
-
-    return {
-        "is_pct": is_pct, "aliskanlik_pct": al_pct,
-        "finans_pct": finans_pct, "mesai_pct": mesai_pct,
-    }
-
-
-def upcoming_events(today, limit=5):
-    """Terminli işler + abonelik yenilemelerini tek bir 'Yaklaşanlar' listesinde birleştirir.
-    Geçmişte kalanlar buraya girmez — gecikmiş terminler öncelikler bölümünde gösteriliyor."""
-    events = []
-
-    deadlines = (
-        DeadlineTask.query.filter(DeadlineTask.done == False, DeadlineTask.due_date >= today)  # noqa: E712
-        .order_by(DeadlineTask.due_date.asc())
-        .limit(limit * 2)
-        .all()
-    )
-    for t in deadlines:
-        events.append({"date": t.due_date, "title": t.title, "source": "İş"})
-
-    subs = (
-        Subscription.query.filter(Subscription.next_renewal >= today)
-        .order_by(Subscription.next_renewal.asc())
-        .limit(limit * 2)
-        .all()
-    )
-    for s in subs:
-        events.append({"date": s.next_renewal, "title": f"{s.name} yenileniyor", "source": "Finans"})
-
-    events.sort(key=lambda e: e["date"])
-    return events[:limit]
 
 
 def upcoming_split(today, limit=4):
@@ -542,14 +478,6 @@ def insight_week_over_week(ctx):
     return {"diff": diff}
 
 
-def insight_momentum_summary(ctx):
-    """Momentum'u okunabilir bir içgörü cümlesine çevirir - anlamlı bir değişim yoksa gösterilmez."""
-    m = compute_momentum(ctx)
-    if m is None or abs(m) < 5:
-        return None
-    return {"momentum": m}
-
-
 def insight_finans_aliskanlik_link(ctx):
     """Harcamanın yüksek/düşük olduğu günlerde Alışkanlık performansı nasıl farklılaşıyor."""
     txs = Transaction.query.filter(
@@ -693,10 +621,8 @@ def get_insights(ctx, max_insights=3):
             "suggestion": f"Önemli işlerini mümkün olduğunca {wd['weekday']} gününe planla.",
         }))
 
-    # Not: Momentum'un kendisi ana ekranda "Son 14 Gün" grafiğinin rozetinde
-    # zaten gösteriliyor — burada ayrıca bir içgörü kartına çevirmiyoruz
-    # (aynı bilgiyi iki kez söylememek için). insight_momentum_summary hâlâ
-    # başka yerlerde kullanılabilir diye duruyor.
+    # Not: Momentum ana ekranda "Son 14 Gün" grafiğinin rozetinde zaten
+    # gösteriliyor — burada ayrıca bir içgörü kartına çevirmiyoruz.
 
     candidates.sort(key=lambda c: c[0])
     return [c[1] for c in candidates[:max_insights]]
@@ -711,8 +637,6 @@ def build_home_context(ctx, now):
     home.html'in ihtiyaç duyduğu HER ŞEYİ tek sözlükte döner. `ctx` önceden
     kurulmuş bir DashboardContext, `now` Türkiye saatiyle şu an (datetime).
     """
-    from common import TR_MONTHS, TR_WEEKDAYS
-
     today = ctx.today
 
     # --- Life Score + boyutlar ---
@@ -727,27 +651,16 @@ def build_home_context(ctx, now):
     aliskanlik_done = len(ctx.habit_done_by_date.get(today, set()))
 
     open_deadlines = DeadlineTask.query.filter_by(done=False).all()
+    # "acil" = gecikmiş VEYA 3 gün içinde (ikisi de eyleme çağırıyor)
     is_urgent_count = sum(1 for t in open_deadlines if (t.due_date - today).days <= 3)
 
     todays_expense = sum(
         t.amount for t in Transaction.query.filter_by(entry_date=today, kind="gider").all()
     )
 
-    mesai_today_hours = (
-        db.session.query(db.func.sum(OvertimeEntry.hours))
-        .filter(OvertimeEntry.entry_date == today)
-        .scalar() or 0
-    )
-    # Bu ayki tahmini mesai geliri (net maaş girilmişse)
-    from salary import calculate_salary
-    month_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
-    month_ot = OvertimeEntry.query.filter(
-        OvertimeEntry.entry_date >= ctx.month_start, OvertimeEntry.entry_date <= month_end
-    ).all()
-    month_lv = LeaveEntry.query.filter(
-        LeaveEntry.entry_date >= ctx.month_start, LeaveEntry.entry_date <= month_end
-    ).all()
-    mesai_calc = calculate_salary(today.year, today.month, month_ot, month_lv)
+    # Mesai — hepsi ctx'in ay-pencere önbelleğinden (yeniden sorgu yok, tutarlı pencere)
+    mesai_today_hours = sum(e.hours for e in ctx.month_overtime if e.entry_date == today)
+    mesai_calc = calculate_salary(today.year, today.month, ctx.month_overtime, ctx.month_leave)
     mesai_month_amount = mesai_calc.get("mesai_tutari")
 
     # --- Trend (SVG) ---

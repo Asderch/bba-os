@@ -1,5 +1,4 @@
 import calendar
-import math
 from datetime import date, datetime
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
@@ -7,7 +6,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from extensions import db
 from common import (
     TR_MONTHS, TR_WEEKDAYS, today_tr,
-    month_bounds as _month_bounds, prev_next_month as _prev_next_month, clamp_year_month,
+    month_bounds as _month_bounds, prev_next_month as _prev_next_month,
+    clamp_year_month, valid_year_month, safe_positive_float, safe_redirect_target,
+    valid_hex_color,
 )
 from salary import hourly_overtime_rate
 from models import (
@@ -38,24 +39,8 @@ def _parse_month_arg():
     return clamp_year_month(request.args.get("year", type=int), request.args.get("month", type=int))
 
 
-def _safe_amount(raw):
-    """'12,50' → 12.5; geçersiz / inf / nan / <= 0 ise None döner."""
-    try:
-        value = float(str(raw).strip().replace(",", "."))
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(value) or value <= 0:
-        return None
-    return value
-
-
 def _valid_month_form():
-    """POST formundaki year/month'u doğrular; geçersizse (None, None) döner."""
-    year = request.form.get("year", type=int)
-    month = request.form.get("month", type=int)
-    if not year or not month or not (1 <= month <= 12) or not (2000 <= year <= 2100):
-        return None, None
-    return year, month
+    return valid_year_month(request.form.get("year", type=int), request.form.get("month", type=int))
 
 
 def _advance_date(d, cycle):
@@ -118,8 +103,10 @@ def index():
     goal_progress_pct = None
     if goal_amount is not None:
         goal_shortfall = goal_amount - net
-        # Yüzde: mutlak gelir/net rakamını sızdırmaz, gizli modda da gösterilebilir.
-        goal_progress_pct = round(min(100, max(0, net / goal_amount * 100))) if goal_amount > 0 else 0
+        # İlerleme yüzdesi: `net ≈ goal × yüzde/100` ve goal formda görünür
+        # olduğu için yüzde de dolaylı gelir sızdırır → gizli modda hiç verme.
+        if not session.get("gelir_gizli", True) and goal_amount > 0:
+            goal_progress_pct = round(min(100, max(0, net / goal_amount * 100)))
         if goal_shortfall > 0:
             salary_row = MonthlySalary.query.filter_by(year=year, month=month).first()
             saatlik_ucret = hourly_overtime_rate(salary_row.net_salary) if salary_row else None
@@ -143,7 +130,7 @@ def index():
 def toggle_gelir_gizli():
     """Gelir gizleme bayrağını çevirir (session'da tutulur, cihaz başına)."""
     session["gelir_gizli"] = not session.get("gelir_gizli", True)
-    return redirect(request.referrer or url_for("butce.index"))
+    return redirect(safe_redirect_target(request.referrer, request.host) or url_for("butce.index"))
 
 
 @bp.route("/goal/set", methods=["POST"])
@@ -153,7 +140,7 @@ def set_goal():
         flash("Geçersiz ay/yıl.")
         return redirect(url_for("butce.index"))
 
-    amount = _safe_amount(request.form.get("target_amount", ""))
+    amount = safe_positive_float(request.form.get("target_amount", ""))
     if amount is None:
         flash("Geçersiz hedef tutarı.")
         return redirect(url_for("butce.index", year=year, month=month))
@@ -185,7 +172,7 @@ def add_transaction():
         flash("Tarih formatı geçersiz.")
         return redirect(url_for("butce.index"))
 
-    amount = _safe_amount(request.form.get("amount", ""))
+    amount = safe_positive_float(request.form.get("amount", ""))
     if amount is None:
         flash("Tutar geçerli ve 0'dan büyük olmalı.")
         return redirect(url_for("butce.index"))
@@ -200,6 +187,12 @@ def add_transaction():
 def edit_transaction(t_id):
     t = Transaction.query.get_or_404(t_id)
     old_year, old_month = t.entry_date.year, t.entry_date.month
+
+    # Gizli modda gelir kaydı düzenlenemez (şablon düğmeyi gizliyor ama uca
+    # doğrudan POST edilebilir).
+    if session.get("gelir_gizli", True) and t.kind == "gelir":
+        flash("Gelir kayıtları gizli modda düzenlenemez. Önce gelirleri göster.")
+        return redirect(url_for("butce.index", year=old_year, month=old_month))
 
     entry_date_str = request.form.get("entry_date", "").strip()
     kind = request.form.get("kind", "").strip()
@@ -216,7 +209,7 @@ def edit_transaction(t_id):
         flash("Tarih formatı geçersiz.")
         return redirect(url_for("butce.index", year=old_year, month=old_month))
 
-    amount = _safe_amount(request.form.get("amount", ""))
+    amount = safe_positive_float(request.form.get("amount", ""))
     if amount is None:
         flash("Tutar geçerli ve 0'dan büyük olmalı.")
         return redirect(url_for("butce.index", year=old_year, month=old_month))
@@ -288,7 +281,7 @@ def add_subscription():
         flash("Tarih formatı geçersiz.")
         return redirect(url_for("butce.subscriptions_list"))
 
-    amount = _safe_amount(request.form.get("amount", ""))
+    amount = safe_positive_float(request.form.get("amount", ""))
     if amount is None:
         flash("Tutar geçerli ve 0'dan büyük olmalı.")
         return redirect(url_for("butce.subscriptions_list"))
@@ -353,7 +346,7 @@ def delete_subscription(sub_id):
 @bp.route("/subscription-category/add", methods=["POST"])
 def add_subscription_category():
     name = request.form.get("name", "").strip()
-    color = request.form.get("color", "").strip() or SUBSCRIPTION_CATEGORY_COLORS[0]
+    color = valid_hex_color(request.form.get("color"), SUBSCRIPTION_CATEGORY_COLORS[0])
     if not name:
         flash("Kategori adı zorunlu.")
         return redirect(url_for("butce.subscriptions_list"))

@@ -9,6 +9,10 @@ ETMEZ) — döngüsel import riski yok.
 """
 from datetime import datetime, timezone, timedelta
 import calendar
+import math
+import re
+
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 # Türkiye 2016'dan beri kalıcı olarak UTC+3 (yaz saati uygulaması yok), bu
 # yüzden sabit ofset yeterli — zoneinfo/tzdata bağımlılığına gerek yok.
@@ -62,6 +66,7 @@ def clamp_year_month(year, month, fallback=None):
     Kullanıcıdan gelen year/month'u güvenli aralığa çeker. `year`/`month`
     None ise fallback (verilmezse bugün) kullanılır. Her zaman geçerli bir
     (year, month) çifti döner — date()/TR_MONTHS[...] üzerinde asla patlamaz.
+    URL argümanları (?year=&month=) için: bozuk değer sessizce kırpılır.
     """
     ref = fallback or today_tr()
     year = year or ref.year
@@ -69,3 +74,44 @@ def clamp_year_month(year, month, fallback=None):
     month = min(12, max(1, month))
     year = min(2100, max(2000, year))
     return year, month
+
+
+def valid_year_month(year, month):
+    """
+    Form gövdesindeki hidden year/month alanları için: geçersiz/eksikse
+    (None, None) döner (kırpmak yerine REDdet — form akışında "geçersiz ay"
+    demek daha doğru). clamp_year_month URL argümanları için, bu form için.
+    """
+    if not year or not month or not (1 <= month <= 12) or not (2000 <= year <= 2100):
+        return None, None
+    return year, month
+
+
+def safe_positive_float(raw):
+    """'12,50' -> 12.5. Geçersiz / inf / nan / <= 0 ise None döner."""
+    try:
+        value = float(str(raw).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value) or value <= 0:
+        return None
+    return value
+
+
+def valid_hex_color(raw, fallback):
+    """`#rrggbb` değilse fallback döner (şablonda satır içi style'a giriyor —
+    CSS enjeksiyonuna karşı)."""
+    raw = (raw or "").strip()
+    return raw if _HEX_COLOR.match(raw) else fallback
+
+
+def safe_redirect_target(target, host):
+    """`redirect(request.referrer or ...)` için: target yalnızca aynı host'a
+    işaret ediyorsa döner, aksi halde None (açık yönlendirme koruması)."""
+    if not target:
+        return None
+    from urllib.parse import urlparse
+    netloc = urlparse(target).netloc
+    if netloc and netloc != host:
+        return None
+    return target

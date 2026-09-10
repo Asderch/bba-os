@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
-from common import TR_MONTHS, TR_WEEKDAYS, today_tr, local_now
+from common import TR_MONTHS, TR_WEEKDAYS, today_tr, local_now, safe_redirect_target, valid_hex_color
 from models import DailyTask, DailyTaskCompletion, DeadlineTask, Tag, Note, TAG_COLORS
 
 bp = Blueprint("is_takip", __name__, url_prefix="/is")
@@ -84,7 +84,7 @@ def toggle_daily_task(task_id):
     else:
         db.session.add(DailyTaskCompletion(daily_task_id=task.id, completion_date=today))
     db.session.commit()
-    return redirect(request.referrer or url_for("is_takip.index"))
+    return redirect(safe_redirect_target(request.referrer, request.host) or url_for("is_takip.index"))
 
 
 @bp.route("/deadline/<int:task_id>/complete", methods=["POST"])
@@ -94,7 +94,7 @@ def complete_deadline_task(task_id):
     task.done_at = local_now()
     db.session.commit()
     flash(f"'{task.title}' tamamlandı olarak işaretlendi.")
-    return redirect(request.referrer or url_for("is_takip.index"))
+    return redirect(safe_redirect_target(request.referrer, request.host) or url_for("is_takip.index"))
 
 
 @bp.route("/deadline/<int:task_id>/delete", methods=["POST"])
@@ -102,7 +102,7 @@ def delete_deadline_task(task_id):
     task = DeadlineTask.query.get_or_404(task_id)
     db.session.delete(task)
     db.session.commit()
-    return redirect(request.referrer or url_for("is_takip.index"))
+    return redirect(safe_redirect_target(request.referrer, request.host) or url_for("is_takip.index"))
 
 
 # ----------------------------------------------------------------------
@@ -122,7 +122,7 @@ def manage_tasks():
 @bp.route("/tags/add", methods=["POST"])
 def add_tag():
     name = request.form.get("name", "").strip()
-    color = request.form.get("color", "").strip() or TAG_COLORS[0]
+    color = valid_hex_color(request.form.get("color"), TAG_COLORS[0])
     if not name:
         flash("Etiket adı zorunlu.")
         return redirect(url_for("is_takip.manage_tasks"))

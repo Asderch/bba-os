@@ -1,11 +1,13 @@
+import hmac
 import os
 import secrets
 import shutil
-from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Flask, render_template, send_file, abort, request, Response, session
 
+from common import today_tr
 from extensions import db
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -58,20 +60,48 @@ db.init_app(app)
 # ile tüm veritabanını indirir.
 _AUTH_USER = os.environ.get("BBA_USER")
 _AUTH_PASS = os.environ.get("BBA_PASS")
+if bool(_AUTH_USER) != bool(_AUTH_PASS):
+    # Yalnızca biri set edilmiş → auth SESSİZCE kapalı kalır, tehlikeli.
+    import warnings
+    warnings.warn(
+        "BBA_USER veya BBA_PASS'tan yalnızca biri ayarlı — kimlik doğrulama KAPALI. "
+        "Herkese açık bir sunucuda ikisini de ayarla.",
+        RuntimeWarning,
+    )
+
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _auth_ok():
+    if not _AUTH_USER or not _AUTH_PASS:
+        return True  # auth yapılandırılmamış - yerel kullanım
+    auth = request.authorization
+    if not auth or not auth.username or not auth.password:
+        return False
+    return (
+        hmac.compare_digest(auth.username.encode("utf-8"), _AUTH_USER.encode("utf-8"))
+        and hmac.compare_digest(auth.password.encode("utf-8"), _AUTH_PASS.encode("utf-8"))
+    )
 
 
 @app.before_request
-def _require_auth():
-    if not _AUTH_USER or not _AUTH_PASS:
-        return None  # auth yapılandırılmamış - yerel kullanım
-    auth = request.authorization
-    if auth and secrets.compare_digest(auth.username or "", _AUTH_USER) \
-            and secrets.compare_digest(auth.password or "", _AUTH_PASS):
-        return None
-    return Response(
-        "Giriş gerekli.", 401,
-        {"WWW-Authenticate": 'Basic realm="BBA OS"'},
-    )
+def _guard_request():
+    # 1) Kimlik doğrulama
+    if not _auth_ok():
+        return Response(
+            "Giriş gerekli.", 401,
+            {"WWW-Authenticate": 'Basic realm="BBA OS"'},
+        )
+
+    # 2) Basit CSRF koruması (Flask-WTF'siz): güvenli olmayan metotlarda isteğin
+    #    kendi sitemizden geldiğini Origin/Referer host'undan doğrula. Tarayıcı
+    #    çapraz-site bir POST'ta bu başlıkları her zaman gönderir; curl/masaüstü
+    #    istemcisi ikisini de göndermeyebilir — o durumda izin veriyoruz.
+    if request.method not in _SAFE_METHODS:
+        source = request.headers.get("Origin") or request.headers.get("Referer")
+        if source and urlparse(source).netloc != request.host:
+            abort(403)
+    return None
 
 # Blueprint'leri kaydet
 from blueprints.is_takip import bp as is_takip_bp
@@ -85,13 +115,25 @@ app.register_blueprint(mesai_bp)
 app.register_blueprint(aliskanlik_bp)
 
 
+PARA_MASK = "••••••"
+
+
 @app.context_processor
 def _inject_privacy():
     """Gelir gizleme: session'da tutulan bir bayrak. True iken şablonlar gelir/
     net/maaş rakamlarını sunucu tarafında maskeler — gerçek değer HTML'e hiç
     girmez (eski sürüm data-real attribute'unda düz metin tutuyordu)."""
     gizli = session.get("gelir_gizli", True)
-    return {"gelir_gizli": gizli, "PARA_MASK": "••••••"}
+
+    def para_gizle(value, suffix=" ₺"):
+        """Gizli modda '••••••', aksi halde '1234.56 ₺'. None -> '—'."""
+        if gizli:
+            return PARA_MASK
+        if value is None:
+            return "—"
+        return f"{value:.2f}{suffix}"
+
+    return {"gelir_gizli": gizli, "PARA_MASK": PARA_MASK, "para_gizle": para_gizle}
 
 
 @app.route("/")
@@ -148,14 +190,14 @@ def backup():
                 os.remove(snapshot_path)
             except OSError:
                 pass
-        filename = f"personal_os_yedek_{date.today().isoformat()}.db"
+        filename = f"personal_os_yedek_{today_tr().isoformat()}.db"
         return send_file(
             BytesIO(data), as_attachment=True, download_name=filename,
             mimetype="application/octet-stream",
         )
 
     sqlite_path = _active_sqlite_path()
-    filename = f"personal_os_yedek_{date.today().isoformat()}.db"
+    filename = f"personal_os_yedek_{today_tr().isoformat()}.db"
     if not sqlite_path or not os.path.exists(sqlite_path):
         abort(404)
     return send_file(sqlite_path, as_attachment=True, download_name=filename)
@@ -174,15 +216,20 @@ def _auto_backup_if_needed():
     if app.config.get("TESTING"):
         return
     BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
-    today_str = date.today().isoformat()
+    today_str = today_tr().isoformat()
     target = BACKUPS_DIR / f"personal_os_{today_str}.db"
 
     if not target.exists():
+        # Önce geçici dosyaya yaz, sonra atomik olarak yerine koy — iki
+        # eşzamanlı "ilk istek" birbirinin yarım yedeğini görmesin.
+        tmp = target.with_suffix(f".db.tmp-{os.getpid()}")
         sqlite_path = _active_sqlite_path()
         if not sqlite_path:
-            _make_mysql_snapshot(str(target))
+            _make_mysql_snapshot(str(tmp))
+            os.replace(tmp, target)
         elif os.path.exists(sqlite_path):
-            shutil.copy2(sqlite_path, target)
+            shutil.copy2(sqlite_path, tmp)
+            os.replace(tmp, target)
 
     all_backups = sorted(BACKUPS_DIR.glob("personal_os_*.db"))
     if len(all_backups) > BACKUP_RETENTION_DAYS:
@@ -203,12 +250,25 @@ def backup_history():
 
 @app.route("/yedekler/<filename>")
 def download_backup(filename):
-    if not filename.startswith("personal_os_") or not filename.endswith(".db") or "/" in filename or ".." in filename:
+    from werkzeug.utils import secure_filename
+    if (
+        filename != secure_filename(filename)
+        or not filename.startswith("personal_os_")
+        or not filename.endswith(".db")
+    ):
         abort(404)
     path = BACKUPS_DIR / filename
     if not path.exists():
         abort(404)
     return send_file(path, as_attachment=True, download_name=filename)
+
+
+@app.errorhandler(403)
+def _forbidden(e):
+    return render_template(
+        "error.html", code=403, message="Bu istek reddedildi.",
+        module_theme="home", module_index_endpoint="root", module_brand_name="BBA OS",
+    ), 403
 
 
 @app.errorhandler(404)

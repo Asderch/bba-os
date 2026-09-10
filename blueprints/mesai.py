@@ -1,12 +1,12 @@
-import math
 from datetime import datetime
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
 from extensions import db
 from common import (
     TR_MONTHS, today_tr,
-    month_bounds as _month_bounds, prev_next_month as _prev_next_month, clamp_year_month,
+    month_bounds as _month_bounds, prev_next_month as _prev_next_month,
+    clamp_year_month, valid_year_month, safe_positive_float as _safe_positive_float,
 )
 from salary import calculate_salary
 from models import (
@@ -65,22 +65,7 @@ def _parse_month_arg():
 
 
 def _valid_month_form():
-    year = request.form.get("year", type=int)
-    month = request.form.get("month", type=int)
-    if not year or not month or not (1 <= month <= 12) or not (2000 <= year <= 2100):
-        return None, None
-    return year, month
-
-
-def _safe_positive_float(raw):
-    """'12,5' → 12.5; geçersiz / inf / nan / <= 0 ise None."""
-    try:
-        value = float(str(raw).strip().replace(",", "."))
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(value) or value <= 0:
-        return None
-    return value
+    return valid_year_month(request.form.get("year", type=int), request.form.get("month", type=int))
 
 
 # ----------------------------------------------------------------------
@@ -180,7 +165,10 @@ def transfer_to_butce():
         amount=calc["mesai_tutari"], note=note, source=source,
     ))
     db.session.commit()
-    flash(f"{calc['mesai_tutari']:.2f} ₺ Bütçe Takip'e gelir olarak aktarıldı.")
+    if session.get("gelir_gizli", True):
+        flash("Bu ayın mesai geliri Bütçe Takip'e aktarıldı.")
+    else:
+        flash(f"{calc['mesai_tutari']:.2f} ₺ Bütçe Takip'e gelir olarak aktarıldı.")
     return redirect(url_for("mesai.hesaplama", year=year, month=month))
 
 
@@ -204,6 +192,10 @@ def profil():
 
 @bp.route("/salary/set", methods=["POST"])
 def set_salary():
+    if session.get("gelir_gizli", True):
+        flash("Maaş girmek/düzenlemek için önce gelirleri göster.")
+        return redirect(url_for("mesai.profil"))
+
     year, month = _valid_month_form()
     if year is None:
         flash("Geçersiz ay/yıl.")

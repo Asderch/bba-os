@@ -1,5 +1,6 @@
 """dashboard_logic'in çekirdek matematiği — özellikle K1 (eksik gün = None)."""
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
+from common import today_tr as _today
 
 import pytest
 
@@ -12,7 +13,7 @@ def seeded(flask_app):
     from models import DailyTask, DailyTaskCompletion, Habit, HabitCompletion
 
     with appmod.app.app_context():
-        today = date.today()
+        today = _today()
         start = today - timedelta(days=7)
         created = datetime.combine(start, datetime.min.time())
 
@@ -67,7 +68,7 @@ def test_life_score_in_range_and_none_when_empty(flask_app):
     import dashboard_logic as dash
 
     with appmod.app.app_context():
-        assert dash.compute_life_score(dash.DashboardContext(date.today())) is None
+        assert dash.compute_life_score(dash.DashboardContext(_today())) is None
 
 
 def test_breakdown_and_priorities_shape(flask_app, seeded):
@@ -78,7 +79,7 @@ def test_breakdown_and_priorities_shape(flask_app, seeded):
     with appmod.app.app_context():
         ctx = dash.DashboardContext(today)
         bd = dash.life_score_breakdown(ctx)
-        assert set(bd) == {"is", "aliskanlik", "finans", "mesai", "weakest"}
+        assert set(bd) == {"is", "aliskanlik", "finans", "mesai_saat", "weakest"}
         assert bd["is"] == 100 and bd["aliskanlik"] == 100
 
         pri = dash.dashboard_priorities(ctx)
@@ -86,18 +87,18 @@ def test_breakdown_and_priorities_shape(flask_app, seeded):
         assert len(pri["rows"]) <= 3
 
 
-def test_upcoming_excludes_past(flask_app):
+def test_upcoming_split_excludes_past(flask_app):
     import app as appmod
     from extensions import db
     from models import DeadlineTask
     import dashboard_logic as dash
 
-    today = date.today()
+    today = _today()
     with appmod.app.app_context():
         db.session.add(DeadlineTask(title="Geçmiş", due_date=today - timedelta(days=3)))
         db.session.add(DeadlineTask(title="Gelecek", due_date=today + timedelta(days=3)))
         db.session.commit()
-        titles = [e["title"] for e in dash.upcoming_events(today)]
+        titles = [e["title"] for e in dash.upcoming_split(today)["isler"]]
         assert "Gelecek" in titles and "Geçmiş" not in titles
 
 
@@ -107,7 +108,7 @@ def test_upcoming_split_separates_is_and_abonelik(flask_app):
     from models import DeadlineTask, Subscription
     import dashboard_logic as dash
 
-    today = date.today()
+    today = _today()
     with appmod.app.app_context():
         db.session.add(DeadlineTask(title="Rapor", due_date=today + timedelta(days=2)))
         db.session.add(DeadlineTask(title="Geçmiş iş", due_date=today - timedelta(days=1)))
