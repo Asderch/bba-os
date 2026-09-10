@@ -292,7 +292,10 @@ with app.app_context():
     import models  # noqa - tüm modellerin db.create_all() tarafından görülmesi için
     db.create_all()
     import schema_upgrade
-    schema_upgrade.run(db)  # var olan DB'lere eksik kolon/index'leri ekle
+    try:
+        schema_upgrade.run(db)  # var olan DB'lere eksik kolon/index'leri ekle
+    except Exception as exc:  # şema güncellemesi uygulamanın açılmasını engellemesin
+        app.logger.error("schema_upgrade başarısız: %s", exc)
 
 
 if __name__ == "__main__":

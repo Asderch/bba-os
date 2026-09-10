@@ -28,7 +28,7 @@
         <div class="card card-sm">
             <div class="card-body">
                 <div class="row align-items-center">
-                    <div class="col-auto"><span class="bg-green-lt avatar">↑</span></div>
+                    <div class="col-auto"><span class="bg-green-lt avatar">{{ icon('trend-up', 18) }}</span></div>
                     <div class="col">
                         <div class="font-weight-medium font-mono">
                             {%- if gelir_gizli %}{{ PARA_MASK }}{% else %}{{ '%.2f' | format(total_income) }} ₺{% endif -%}
@@ -43,7 +43,7 @@
         <div class="card card-sm">
             <div class="card-body">
                 <div class="row align-items-center">
-                    <div class="col-auto"><span class="bg-red-lt avatar">↓</span></div>
+                    <div class="col-auto"><span class="bg-red-lt avatar">{{ icon('trend-down', 18) }}</span></div>
                     <div class="col">
                         <div class="font-weight-medium font-mono">{{ '%.2f' | format(total_expense) }} ₺</div>
                         <div class="text-secondary">Toplam Gider</div>
@@ -56,7 +56,7 @@
         <div class="card card-sm">
             <div class="card-body">
                 <div class="row align-items-center">
-                    <div class="col-auto"><span class="{{ 'bg-green-lt' if net >= 0 else 'bg-red-lt' }} avatar">=</span></div>
+                    <div class="col-auto"><span class="{{ 'bg-green-lt' if net >= 0 else 'bg-red-lt' }} avatar">{{ icon('wallet', 18) }}</span></div>
                     <div class="col">
                         <div class="font-weight-medium font-mono">
                             {%- if gelir_gizli %}{{ PARA_MASK }}{% else %}{{ '%.2f' | format(net) }} ₺{% endif -%}

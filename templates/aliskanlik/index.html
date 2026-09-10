@@ -51,7 +51,7 @@
             <div class="d-flex align-items-center gap-2">
                 {% if row.streak > 0 %}<span class="badge bg-orange-lt font-mono">{{ icon('flame', 14) }} {{ row.streak }}</span>{% endif %}
                 <span class="badge bg-secondary-lt font-mono">
-                    {{ 'Bu hafta' if row.habit.frequency_type == 'haftalik' else 'Bu hafta' }} {{ row.week_count }}/{{ row.week_target }}
+                    Bu hafta {{ row.week_count }}/{{ row.week_target }}
                 </span>
             </div>
         </div>

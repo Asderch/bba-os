@@ -43,7 +43,7 @@
                         {% if task.note %}<div class="text-secondary small">{{ task.note }}</div>{% endif %}
                     </div>
                     <form method="POST" action="{{ url_for('is_takip.delete_daily_task', task_id=task.id) }}"
-                          onsubmit="return confirm('{{ task.title }} silinecek, geçmiş kayıtları da gidecek. Emin misin?');">
+                          onsubmit='return confirm({{ (task.title ~ ' silinecek, geçmiş kayıtları da gidecek. Emin misin?') | tojson }});'>
                         <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
                     </form>
                 </div>
@@ -130,7 +130,7 @@
         <div class="list-group-item d-flex justify-content-between align-items-center">
             <span class="badge" style="background: {{ tag.color }}22; color: {{ tag.color }};">{{ tag.name }}</span>
             <form method="POST" action="{{ url_for('is_takip.delete_tag', tag_id=tag.id) }}"
-                  onsubmit="return confirm('{{ tag.name }} silinecek, bu etikete sahip işlerden de kaldırılacak. Emin misin?');">
+                  onsubmit='return confirm({{ (tag.name ~ ' silinecek, bu etikete sahip işlerden de kaldırılacak. Emin misin?') | tojson }});'>
                 <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
             </form>
         </div>

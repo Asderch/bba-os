@@ -44,11 +44,11 @@
         <div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 320px;">
             {% for cell in grid %}
             <div title="{{ cell.date.strftime('%d.%m.%Y') }} — {{ 'Tamamlandı' if cell.done else 'Yapılmadı' }}"
-                 style="width: 18px; height: 18px; border-radius: 4px; background: {{ '#a855f7' if cell.done else 'var(--tblr-bg-surface-secondary)' }};">
+                 style="width: 18px; height: 18px; border-radius: 4px; background: {{ 'var(--bba-copper)' if cell.done else 'var(--bba-border-secondary)' }};">
             </div>
             {% endfor %}
         </div>
-        <div class="text-secondary small mt-2">Her kutu bir gün — turuncu: tamamlandı, gri: yapılmadı.</div>
+        <div class="text-secondary small mt-2">Her kutu bir gün — bakır: tamamlandı, gri: yapılmadı.</div>
     </div>
 </div>
 

@@ -95,10 +95,10 @@
             </div>
             <div class="d-flex align-items-center gap-1">
                 <form method="POST" action="{{ url_for('aliskanlik.unarchive_habit', habit_id=habit.id) }}">
-                    <button type="submit" class="btn btn-outline-secondary btn-sm">↩ Aktifleştir</button>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Aktifleştir</button>
                 </form>
                 <form method="POST" action="{{ url_for('aliskanlik.delete_habit', habit_id=habit.id) }}"
-                      onsubmit="return confirm('{{ habit.name }} kalıcı olarak silinecek, geçmiş kayıtları da gidecek. Emin misin?');">
+                      onsubmit='return confirm({{ (habit.name ~ ' kalıcı olarak silinecek, geçmiş kayıtları da gidecek. Emin misin?') | tojson }});'>
                     <button type="submit" class="btn btn-icon btn-sm text-red" title="Kalıcı Sil">{{ icon('x', 16) }}</button>
                 </form>
             </div>
