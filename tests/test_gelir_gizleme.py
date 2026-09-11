@@ -116,3 +116,26 @@ def test_mesai_pages_mask_salary_when_hidden(client, flask_app):
         html = client.get(path).get_data(as_text=True)
         assert "48765" not in html, path
         assert "••••••" in html, path
+
+
+def test_gelir_gizli_is_shared_across_devices_not_per_session(flask_app):
+    """gelir_gizli artık Flask `session` (cihaza özel çerez) yerine veritabanında
+    tutulmalı — aksi halde aynı kişi telefondan ve bilgisayardan farklı Life
+    Score/gizlilik durumu görür (iki ayrı test client'ı iki ayrı 'cihazı' temsil eder,
+    ikisinin de aynı çerez jar'ı YOK — session paylaşılmıyor, ama DB paylaşılıyor)."""
+    device_a = flask_app.test_client()
+    device_a.environ_base["HTTP_ORIGIN"] = "http://localhost"
+    device_b = flask_app.test_client()
+    device_b.environ_base["HTTP_ORIGIN"] = "http://localhost"
+
+    # Başlangıçta ikisi de varsayılan (gizli) durumda olmalı.
+    assert "••••••" in device_a.get("/butce/").get_data(as_text=True)
+    assert "••••••" in device_b.get("/butce/").get_data(as_text=True)
+
+    # "device_a" (örn. bilgisayar) gelirleri gösterir...
+    device_a.post("/butce/gelir-gizle")
+
+    # ...ve "device_b" (örn. telefon, hiç toggle etmedi, ayrı bir çerez jarı)
+    # de artık gösterir olmalı — ayar cihaza değil, uygulamaya ait.
+    html_b = device_b.get("/butce/").get_data(as_text=True)
+    assert "••••••" not in html_b

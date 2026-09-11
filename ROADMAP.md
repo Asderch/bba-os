@@ -113,10 +113,13 @@ Bu sayede artık:
       import'ları temizlendi; DB index'leri; `tests/` (pytest)
 - [x] Mesai günlük kesinti formülü doğrulandı (Excel): `net/225*8` bilinçli —
       `salary.py` başında yazılı.
-- [x] Gelir gizleme artık **sunucu tarafında**: `session["gelir_gizli"]` bayrağı,
-      gizli iken gelir/net/maaş rakamları HTML'e hiç girmiyor (`••••••`), hedef
-      ilerlemesi yüzde olarak gösteriliyor. Gelir kayıtları gizli modda
-      düzenlenemez (silinebilir). `_inject_privacy` context processor.
+- [x] Gelir gizleme artık **sunucu tarafında**: gizli iken gelir/net/maaş
+      rakamları HTML'e hiç girmiyor (`••••••`), hedef ilerlemesi yüzde olarak
+      gösteriliyor. Gelir kayıtları gizli modda düzenlenemez (silinebilir).
+      `_inject_privacy` context processor. Bayrak `settings.py` üzerinden
+      veritabanında (`AppSetting`) tutulur — eskiden `session["gelir_gizli"]`
+      idi, yani cihaza özeldi; telefon ve bilgisayar farklı Life Score
+      gösterebiliyordu (finans boyutu dahil/hariç). Artık tüm cihazlarda aynı.
 - [ ] Para alanları `Float` → `Numeric(10,2)` (ertelendi — tüm para aritmetiğinin
       Decimal/float karışımı için gözden geçirilmesi gerek)
 - [ ] Alembic/Flask-Migrate (şimdilik hafif `schema_upgrade.py` yetiyor)

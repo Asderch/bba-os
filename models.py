@@ -241,3 +241,18 @@ class HabitCompletion(db.Model):
     __table_args__ = (
         db.UniqueConstraint("habit_id", "completion_date", name="uq_habit_date"),
     )
+
+
+class AppSetting(db.Model):
+    """Cihazdan bağımsız, kalıcı tek-kullanıcı ayarları (anahtar/değer).
+
+    Flask `session` tarayıcıya özel bir çerezde tutulur: aynı kullanıcı
+    telefondan ve bilgisayardan girince iki ayrı session görür. gelir_gizli
+    gibi "tüm cihazlarda aynı olması gereken" bir ayar session'da tutulursa,
+    bir cihazda açıp diğerinde kapalı kalabilir — Life Score gibi bu ayara
+    göre değişen değerler cihaza göre farklı görünür. Bu yüzden böyle
+    ayarlar burada, veritabanında saklanır (bkz. settings.py)."""
+    __tablename__ = "app_settings"
+
+    key = db.Column(db.String(64), primary_key=True)
+    value = db.Column(db.String(255))

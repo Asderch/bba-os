@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
 from common import (
@@ -9,6 +9,7 @@ from common import (
     clamp_year_month, valid_year_month, safe_positive_float as _safe_positive_float,
 )
 from salary import calculate_salary
+from settings import get_gelir_gizli
 from models import (
     OvertimeEntry, LeaveEntry, MonthlySalary, Transaction,
     OVERTIME_CATEGORIES, OVERTIME_CATEGORY_LABELS, LEAVE_TYPES, LEAVE_TYPE_LABELS,
@@ -168,7 +169,7 @@ def transfer_to_butce():
         amount=calc["mesai_tutari"], note=note, source=source,
     ))
     db.session.commit()
-    if session.get("gelir_gizli", True):
+    if get_gelir_gizli():
         flash("Bu ayın mesai geliri Bütçe Takip'e aktarıldı.")
     else:
         flash(f"{calc['mesai_tutari']:.2f} ₺ Bütçe Takip'e gelir olarak aktarıldı.")
@@ -195,7 +196,7 @@ def profil():
 
 @bp.route("/salary/set", methods=["POST"])
 def set_salary():
-    if session.get("gelir_gizli", True):
+    if get_gelir_gizli():
         flash("Maaş girmek/düzenlemek için önce gelirleri göster.")
         return redirect(url_for("mesai.profil"))
 

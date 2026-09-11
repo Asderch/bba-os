@@ -5,10 +5,11 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, render_template, send_file, abort, request, Response, session
+from flask import Flask, render_template, send_file, abort, request, Response
 
 from common import today_tr
 from extensions import db
+from settings import get_gelir_gizli
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "personal_os.db")
@@ -122,10 +123,13 @@ PARA_MASK = "••••••"
 
 @app.context_processor
 def _inject_privacy():
-    """Gelir gizleme: session'da tutulan bir bayrak. True iken şablonlar gelir/
-    net/maaş rakamlarını sunucu tarafında maskeler — gerçek değer HTML'e hiç
-    girmez (eski sürüm data-real attribute'unda düz metin tutuyordu)."""
-    gizli = session.get("gelir_gizli", True)
+    """Gelir gizleme: veritabanında (AppSetting, cihazdan bağımsız) tutulan bir
+    bayrak. True iken şablonlar gelir/net/maaş rakamlarını sunucu tarafında
+    maskeler — gerçek değer HTML'e hiç girmez (eski sürüm data-real
+    attribute'unda düz metin tutuyordu; daha da eski sürüm bu bayrağı Flask
+    `session`'da — yani cihaza özel bir çerezde — tutuyordu, bu yüzden aynı
+    kişi telefondan ve bilgisayardan farklı Life Score görebiliyordu)."""
+    gizli = get_gelir_gizli()
 
     def para_gizle(value, suffix=" ₺"):
         """Gizli modda '••••••', aksi halde '1234.56 ₺'. None -> '—'."""
@@ -149,7 +153,7 @@ def root():
     import dashboard_logic as dash
 
     ctx = dash.DashboardContext(today_tr())
-    gelir_gizli = session.get("gelir_gizli", True)
+    gelir_gizli = get_gelir_gizli()
     home = dash.build_home_context(ctx, now_tr(), gelir_gizli)
 
     return render_template(

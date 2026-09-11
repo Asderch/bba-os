@@ -1,7 +1,7 @@
 import calendar
 from datetime import date, datetime
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
 from common import (
@@ -11,6 +11,7 @@ from common import (
     valid_hex_color,
 )
 from salary import hourly_overtime_rate
+from settings import get_gelir_gizli, set_gelir_gizli
 from models import (
     Transaction, EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORY_COLORS,
     Subscription, SubscriptionCategory, SUBSCRIPTION_CATEGORY_COLORS,
@@ -108,7 +109,7 @@ def index():
         goal_shortfall = goal_amount - net
         # İlerleme yüzdesi: `net ≈ goal × yüzde/100` ve goal formda görünür
         # olduğu için yüzde de dolaylı gelir sızdırır → gizli modda hiç verme.
-        if not session.get("gelir_gizli", True) and goal_amount > 0:
+        if not get_gelir_gizli() and goal_amount > 0:
             goal_progress_pct = round(min(100, max(0, net / goal_amount * 100)))
         if goal_shortfall > 0:
             salary_row = MonthlySalary.query.filter_by(year=year, month=month).first()
@@ -131,8 +132,9 @@ def index():
 
 @bp.route("/gelir-gizle", methods=["POST"])
 def toggle_gelir_gizli():
-    """Gelir gizleme bayrağını çevirir (session'da tutulur, cihaz başına)."""
-    session["gelir_gizli"] = not session.get("gelir_gizli", True)
+    """Gelir gizleme bayrağını çevirir. Veritabanında (AppSetting) tutulur,
+    cihazdan bağımsız — bir cihazda açılınca tüm cihazlarda aynı görünür."""
+    set_gelir_gizli(not get_gelir_gizli())
     return redirect(safe_redirect_target(request.referrer, request.host) or url_for("butce.index"))
 
 
@@ -193,7 +195,7 @@ def edit_transaction(t_id):
 
     # Gizli modda gelir kaydı düzenlenemez (şablon düğmeyi gizliyor ama uca
     # doğrudan POST edilebilir).
-    if session.get("gelir_gizli", True) and t.kind == "gelir":
+    if get_gelir_gizli() and t.kind == "gelir":
         flash("Gelir kayıtları gizli modda düzenlenemez. Önce gelirleri göster.")
         return redirect(url_for("butce.index", year=old_year, month=old_month))
 
