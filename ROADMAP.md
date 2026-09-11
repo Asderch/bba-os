@@ -531,19 +531,22 @@ ANCAK ondan sonra başlanacak.
     seferlik bir veri-taşıma migration'ı gerekir — hem SQLite (yerel/
     yedek) hem MySQL (PythonAnywhere canlı) için test edilmeli.
 
-- [ ] **Dağıtım — karar noktası (henüz karar verilmedi)**
+- [ ] **Dağıtım — karar noktası** → somut $0/minimum-maliyet cevabı için
+      bkz. **`MALIYETSIZ_ROADMAP.md`** (hosting/DB/auth/e-posta için
+      2026-09 itibariyle güncel ücretsiz seçenekler ve yükseltme eşikleri)
   - `DEPLOY.md` ve `wsgi_example.py`, PythonAnywhere'de **tek WSGI
     instance + tek veritabanı** (SQLite veya tek MySQL DB) varsayımıyla
     yazılmış; `BBA_USER`/`BBA_PASS`/`BBA_SECRET_KEY` WSGI dosyasına gömülü
     tek bir hesabı temsil ediyor. Çok-kullanıcı bir SaaS'a geçince bu
     model (tek instance, ortam değişkeninde sabit kimlik bilgisi)
     anlamsız kalıyor.
-  - Soru işareti (karar Berkcan'a bırakılıyor): PythonAnywhere'in
-    ücretsiz/tek-kullanıcı planı çok-kullanıcılı bir SaaS trafiğini ve
-    kullanıcı hesap yönetimini kaldırabilir mi, yoksa ücretli bir plana
-    ya da farklı bir hosting'e (ör. Render, Fly.io, Railway) geçiş mi
-    gerekir? Bu, migration stratejisinden ve beklenen kullanıcı sayısından
-    bağımsız olarak ayrıca değerlendirilmesi gereken bir karar noktası.
+  - Cevaplandı (bkz. `MALIYETSIZ_ROADMAP.md`): PythonAnywhere ücretsiz
+    planında (günde 100 CPU-sn, custom domain yok) kalınabilir ama CPU
+    sınırı çok-kullanıcı trafiğinde beklenenden hızlı dolabilir; Render
+    gerçek bir ücretsiz alternatif (soğuk başlangıç dezavantajıyla),
+    Fly.io/Railway'in artık kalıcı ücretsiz katmanı yok. Karar Berkcan'a
+    ait — büyümeden önce ödeme yapmama ilkesiyle, önce PythonAnywhere'de
+    kalıp CPU sınırına yaklaşınca karar vermek önerildi.
 
 **Not:** Yukarıdaki maddelerin TAMAMI 1 Ekim 2026'dan önce başlanmamalı —
 önce mevcut tek-kullanıcı sürümüyle biriken gerçek kullanım verisi üzerinden
