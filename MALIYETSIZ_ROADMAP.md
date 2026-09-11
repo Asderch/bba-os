@@ -4,7 +4,9 @@ Bu döküman `ROADMAP.md`'deki **V6 — Çok Kullanıcı Dönüşümü** bölüm
 "Dağıtım — karar noktası" (henüz karar verilmemiş) maddesine somut, güncel
 (2026-09) fiyat/limit verisiyle bir cevap veriyor: çok-kullanıcı bir "app"e
 **$0'a yakın** bir maliyetle nereye kadar çıkılabilir, hangi eşiğe gelince
-hangi bileşen için ödeme yapmak gerekir.
+hangi bileşen için ödeme yapmak gerekir. **§8**, Google Play Store'a çıkma
+ve kullanıcılardan ücret alma konusunu da aynı "minimum maliyet" ilkesiyle
+ele alıyor.
 
 **İlke:** Kullanıcı sayısı 0'ken/azken hiçbir şeye önceden para yatırma —
 gerçek bir sınıra çarpınca (CPU, e-posta adedi, disk) o bileşeni yükselt.
@@ -41,6 +43,13 @@ uyuşmadıkları için bu roadmap'ten çıkarıldı.
   Developer plana geç ($10/ay, ilk gerçek/kabul edilebilir maliyet), ya da
   (b) Render'a taşı (soğuk başlangıç gecikmesi kullanıcı deneyimi açısından
   kabul edilebiliyorsa hâlâ $0).
+
+**Güncelleme (2026-09-11):** Berkcan zaten Developer plana ($10/ay) geçmiş
+durumda — bu roadmap'in önerdiği "ilk yükseltme eşiği" burası. Bu, custom
+domain (aşağıdaki §5 ve §8'de önemli — Google Play/TWA için gerekiyor) ve
+5.000 CPU-sn/gün açıyor. Bu adımdan sonrası (birden fazla kullanıcı, Play
+Store dağıtımı) için ek hosting maliyeti şu an gerekmiyor; bir sonraki
+gerçek eşik muhtemelen 5.000 CPU-sn/gün sınırına yaklaşmak olur.
 
 ## 2. Veritabanı
 
@@ -110,6 +119,14 @@ getirmiyor, "sonra ekleriz" diye erteleme gerekmiyor.
 — bu roadmap'teki **tek neredeyse-kaçınılmaz küçük maliyet**, ama sadece
 profesyonel görünüm/marka istendiğinde gerekli; teknik olarak ertelenebilir.
 
+**Güncelleme:** Google Play Store'a çıkmak isteniyorsa (bkz. §8) gerçek bir
+alan adı artık **zorunlu hale geliyor** — TWA (Trusted Web Activity)
+paketleme, uygulamanın sahibi olduğunu kanıtlamak için domain üzerinde bir
+doğrulama dosyası (`Digital Asset Links`) barındırmayı gerektiriyor, ve
+`*.pythonanywhere.com` gibi paylaşılan bir alt alan adında bunu yapmak
+mümkün ama pratik değil/güven vermiyor. Developer plan zaten custom domain
+desteği veriyor, tek eksik ~$10-15/yıllık domain kaydı.
+
 ## 6. İzleme / Hata takibi
 
 Opsiyonel: Sentry ücretsiz planı (aylık 5.000 hata, 1 proje) — ya da hiç
@@ -124,22 +141,116 @@ hedefiyle doğrudan çelişiyor. `ROADMAP.md` zaten bunu "en son" olarak
 işaretlemişti (Berkcan'ın kendi notu); bu roadmap o kararı teyit ediyor —
 para kazanmaya başlamadan bu maddeye dokunulmamalı.
 
+## 8. Google Play Store'a çıkmak + kullanıcılardan ücret almak
+
+Bu, önceki 7 maddeden farklı bir eksen: artık "$0'a nasıl kalırım" değil,
+"gelir elde etmek için hangi SIRAYLA ve hangi maliyetle ilerlemeliyim"
+sorusu. **Sıralama önemli** — bir Play Store listesi, arkasında gerçek
+kullanıcı hesabı/ödeme sistemi olmadan anlamsız; önce `ROADMAP.md`'nin
+**V6 — Çok Kullanıcı Dönüşümü** bölümü (gerçek login, `user_id`) ve
+aşağıdaki "web'de ödeme" adımı tamamlanmalı, Play Store paketleme EN SON
+adım olmalı.
+
+### 8.1 — Android/Play Store'a en ucuz yol: TWA (yeniden yazmak GEREKMİYOR)
+
+BBA OS zaten bir PWA (`manifest.json` + `sw.js` mevcut) — bunu native
+Android/iOS koduna sıfırdan yazmak yerine **Trusted Web Activity (TWA)**
+ile ince bir Android kabuğuna sarmak yeterli: uygulama tarayıcı arayüzü
+olmadan, tam ekran, mevcut web sitesini gösterir. ([MobiLoud: Publishing PWA to App Store/Play 2026](https://www.mobiloud.com/blog/publishing-pwa-app-store/), [Bubblewrap/TWA teknik rehber](https://medium.com/@abusomwansantos/from-pwa-to-play-store-a-technical-guide-to-bubblewrap-and-twa-b244d1a626e6))
+
+**Gereksinimler (hepsi ücretsiz araçlarla karşılanıyor):**
+- HTTPS + gerçek bir alan adı (bkz. §5 güncellemesi — Developer plan zaten
+  destekliyor, sadece domain kaydı gerekiyor, ~$10-15/yıl).
+- Geçerli bir Web Manifest (`name`, `icons`, `start_url`, `display`,
+  renkler) — zaten var, gözden geçirilmeli.
+- `Digital Asset Links` doğrulama dosyası (`/.well-known/assetlinks.json`)
+  — domaine tek seferlik eklenen, $0 bir JSON dosyası.
+- Lighthouse PWA skoru ≥ 80 — mevcut PWA kurulumunun buna uyup uymadığı
+  kontrol edilmeli (Chrome DevTools'ta ücretsiz ölçülür).
+- Paketleme aracı: **Bubblewrap** (Google, komut satırı) ya da
+  **PWABuilder** (Microsoft, görsel arayüz) — ikisi de tamamen ücretsiz,
+  açık kaynak. ([Bubblewrap resmi Android rehberi](https://developer.android.com/develop/ui/views/layout/webapps/guide-trusted-web-activities-version2))
+
+**Google Play Geliştirici hesabı:** Tek seferlik **$25**, aylık/yıllık
+ücret yok. Kişisel hesap (organizasyon değil) olarak açılırsa — 13
+Kasım 2023'ten sonra açılan tüm kişisel hesaplar için — **her yeni
+uygulama** yayına girmeden önce **12 test kullanıcısıyla 14 gün kapalı
+test** şartı var (ek maliyet değil ama zaman/süreç maliyeti — göz ardı
+edilmemeli, ilk yayın tarihini ~2 hafta geciktirir). Kimlik doğrulama
+için resmi kimlik belgesi (ve bazen selfie) isteniyor. ([Google Play Developer hesap rehberi 2026](https://www.iconikai.com/blog/google-play-developer-account-fee-2026))
+
+**Toplam Play Store'a çıkış maliyeti: $25 (tek seferlik) + ~$10-15/yıl
+domain (zaten §5'te gerekli hale geldi) + Bubblewrap/PWABuilder $0.**
+
+### 8.2 — Kullanıcılardan ücret almak: NEREDE tahsil ettiğin kritik
+
+**⚠️ En önemli karar:** Android uygulamasının İÇİNDE bir "satın al/abone
+ol" düğmesi koyarsan, Google Play Billing kullanman genelde ZORUNLU hale
+gelir (dijital içerik/abonelik satışı Play Store politikası gereği).
+2026-06-30 itibarıyla (ABD/İngiltere/AEA) yeni ücret yapısı: ([Android Developers Blog: Expanded billing 2026](https://android-developers.googleblog.com/2026/06/play-expanded-billing.html), [Google Play 2026 ücret değişiklikleri](https://pricepush.app/blog/google-play-subscription-fees-2026-real-math))
+
+| Ödeme yolu (uygulama içinden) | Google'ın kesintisi (ilk $1M/yıl) |
+|---|---|
+| Google Play Billing (kendi ödeme sistemi) | **%15** (10% servis + 5% billing) |
+| Alternatif faturalama / web linkine yönlendirme (uygulama içinden) | **%10** (sadece servis ücreti) |
+
+($1M/yıl geliri geçince oranlar %20-25'e çıkıyor — BBA OS'in şu anki
+ölçeğinde bu çok uzak bir eşik, şimdilik göz ardı edilebilir.)
+
+**En ucuz ve en basit yol — ödemeyi uygulamanın DIŞINDA tut:**
+Android/TWA uygulamasının içine HİÇ satın alma/abonelik akışı koyma.
+Kullanıcı zaten web sitesinde (tarayıcıdan) hesap açıp ödemeyi orada
+yapsın (Stripe Checkout ya da Paddle/LemonSqueezy) — Android uygulaması
+sadece "giriş yap, zaten ödediysen içeriği gör" şeklinde çalışsın. Bu
+durumda uygulama içinde bir satın alma akışı OLMADIĞI için Google Play
+Billing'e tabi olma ihtimalin düşer, Google'a HİÇ komisyon ödemeden
+(ne %10 ne %15) sadece kendi ödeme sağlayıcının kesintisini ödersin:
+- **Stripe:** ~%2.9 + $0.30/işlem, aylık sabit ücret yok.
+- **Paddle / LemonSqueezy** ("Merchant of Record"): ~%5, ama global
+  KDV/vergi hesaplama ve fatura kesme işini senin yerine üstleniyor —
+  tek başına uluslararası satış yapan biri için Stripe'a göre çok daha az
+  bürokrasi, fiyat farkı bu yüzden makul.
+
+**Not:** Bu politikalar Google tarafında sık değişiyor (yukarıdaki tablo
+2026-06-30'da yürürlüğe giren, oldukça yeni bir değişiklik) ve bölgeye
+göre farklılık gösterebiliyor — Play Store'a başvurmadan hemen önce
+[Play Console'un güncel politika sayfasından](https://support.google.com/googleplay/android-developer/answer/112622) teyit edilmeli.
+
+**Önerilen sıra:**
+1. `ROADMAP.md` V6 — gerçek kullanıcı hesapları (`user_id`, login).
+2. Web sitesinde ödeme/abonelik akışı (Stripe ya da Paddle/LemonSqueezy) —
+   BURASI asıl "kullanıcılardan ücret alma" işinin gerçekleştiği yer.
+3. Domain + HTTPS (zaten Developer planında var, sadece domain kaydı).
+4. Bubblewrap/PWABuilder ile TWA paketleme, $25 tek seferlik Play
+   Developer hesabı, 12-tester/14-gün süreci.
+5. Android uygulamasında satın alma akışı YOK — sadece login; ödeme hep
+   web'de kalır, Google'a komisyon gitmez.
+
+*(Not: Bu roadmap sadece Google Play'i kapsıyor — Berkcan Apple App
+Store'u da isterse TWA'nın iOS eşdeğeri yok, ayrı bir değerlendirme
+[Capacitor gibi bir sarmalayıcı] gerekir; şimdilik istenmedi, bu yüzden
+detaylandırılmadı.)*
+
 ## Özet tablo
 
-| Bileşen | $0 seçenek | Ne zaman ücretliye geçilir |
+| Bileşen | $0 / minimum seçenek | Ne zaman ücretliye geçilir |
 |---|---|---|
-| Barındırma | PythonAnywhere ücretsiz (kalınabilir) | Günlük CPU-sn sınırına yaklaşınca → Developer $10/ay ya da Render'a taşı |
+| Barındırma | PythonAnywhere Developer $10/ay (zaten aktif) | 5.000 CPU-sn/gün sınırına yaklaşınca → daha üst plan ya da Render |
 | Veritabanı | Mevcut PythonAnywhere MySQL (taşımaya gerek yok) | Sadece Render'a geçilirse: Neon/Supabase (Render'ın kendi ücretsiz DB'si 90 günde silinir, kullanma) |
 | Auth | Kendi yaz: Flask-Login + werkzeug.security | Muhtemelen hiçbir zaman — bu $0 kalıcı bir çözüm |
 | E-posta | Brevo ücretsiz (300/gün, süresiz) | Günlük 300 e-postaya (~300 aktif kayıt/reset/gün) yaklaşınca |
-| Alan adı | `*.pythonanywhere.com` / `*.onrender.com` | İstenildiğinde (marka/profesyonellik), ~$10-15/yıl |
+| Alan adı | Gerekli hale geldi (Play Store için) | ~$10-15/yıl, tek seferlik karar |
 | İzleme | `app.logger` (mevcut) | Sentry ücretsiz plan, istenirse hemen eklenebilir ($0) |
 | AI katmanı | — (yapılmıyor) | Ancak gerçek gelir/bütçe oluşunca |
+| Play Store'a çıkış | Bubblewrap/PWABuilder $0 + $25 tek seferlik hesap | Sadece bir kere ödenir |
+| Ödeme tahsilatı | Web'de Stripe (~%2.9+$0.30) ya da Paddle (~%5) | Uygulama-içi satın alma eklersen Google %10-15 keser |
 
-**Sonuç:** Onlarca (muhtemelen yüze yakın) kullanıcıya kadar toplam
-beklenen aylık maliyet **$0** (opsiyonel domain hariç). İlk gerçek fatura
-muhtemelen PythonAnywhere CPU-saniyesi sınırına takılmaktan gelecek —
-bu da ayda $10 gibi küçük bir adım, büyük bir sıçrama değil.
+**Sonuç:** Web tarafında toplam aylık sabit maliyet zaten $10 (PythonAnywhere
+Developer) + isteğe bağlı ~$1/ay (yıllık domain). Play Store'a çıkış tek
+seferlik ~$25-40 (domain + Play hesabı) ekliyor. Gerçek, tekrar eden
+maliyet SADECE gelirle orantılı ödeme işlemci kesintisi (%3-5, web'de
+kalırsan) — Google'a komisyon ödemeden bir "app" olarak Play Store'da
+bulunmak teknik olarak mümkün.
 
 ---
 *Bu döküman `ROADMAP.md` → V6 → "Dağıtım — karar noktası" maddesinin
