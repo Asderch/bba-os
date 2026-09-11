@@ -8,5 +8,6 @@
         <a href="{{ url_for('butce.subscriptions_list') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'butce.subscriptions_list' }}">Abonelikler</a>
     </div>
 </div>
+{% block page_context %}{% endblock %}
 {% block inner %}{% endblock %}
 {% endblock %}

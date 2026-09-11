@@ -75,8 +75,9 @@
         <form method="POST" action="{{ url_for('butce.set_goal') }}" class="d-flex gap-2 mb-3">
             <input type="hidden" name="year" value="{{ year }}">
             <input type="hidden" name="month" value="{{ month }}">
-            <input type="number" step="0.01" name="target_amount" class="form-control font-mono" placeholder="örn. 5000"
-                   value="{{ goal_amount if goal_amount is not none else '' }}">
+            <input type="number" step="0.01" name="target_amount" class="form-control font-mono"
+                   placeholder="{{ 'gizli' if gelir_gizli else 'örn. 5000' }}"
+                   {%- if not gelir_gizli %} value="{{ goal_amount if goal_amount is not none else '' }}"{% endif %}>
             <button type="submit" class="btn btn-primary">Kaydet</button>
         </form>
 
@@ -102,7 +103,11 @@
                     {%- endif %}
                 </div>
             {% else %}
-                <div class="alert alert-success mb-0">Bu ayki birikim hedefine ulaştın!</div>
+                {% if gelir_gizli %}
+                    <div class="alert alert-secondary mb-0">Bu ayın birikim durumu belli oldu — detay için gelirleri göster.</div>
+                {% else %}
+                    <div class="alert alert-success mb-0">Bu ayki birikim hedefine ulaştın!</div>
+                {% endif %}
             {% endif %}
         {% endif %}
     </div>

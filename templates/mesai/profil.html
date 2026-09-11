@@ -13,7 +13,7 @@
         <div class="d-flex align-items-center gap-2 text-secondary">
             <span>Gelirler gizli. Maaş girmek/düzenlemek için:</span>
             <form method="POST" action="{{ url_for('butce.toggle_gelir_gizli') }}">
-                <button type="submit" class="btn btn-outline-secondary btn-sm">Gelirleri göster</button>
+                <button type="submit" class="btn btn-outline-secondary btn-sm">{{ icon('eye', 16) }} Gelirleri göster</button>
             </form>
         </div>
         {% else %}

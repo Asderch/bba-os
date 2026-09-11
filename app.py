@@ -95,11 +95,13 @@ def _guard_request():
 
     # 2) Basit CSRF koruması (Flask-WTF'siz): güvenli olmayan metotlarda isteğin
     #    kendi sitemizden geldiğini Origin/Referer host'undan doğrula. Tarayıcı
-    #    çapraz-site bir POST'ta bu başlıkları her zaman gönderir; curl/masaüstü
-    #    istemcisi ikisini de göndermeyebilir — o durumda izin veriyoruz.
+    #    çapraz-site bir POST'ta bu başlıkları her zaman gönderir. FAIL-CLOSED:
+    #    Origin/Referer başlığının ikisi de eksikse (ör. curl/masaüstü istemcisi)
+    #    istek artık REDDEDİLİR (403) — eskiden bu durumda izin veriliyordu,
+    #    bu da bir no-referrer CSRF bypass açığıydı; kapatıldı.
     if request.method not in _SAFE_METHODS:
         source = request.headers.get("Origin") or request.headers.get("Referer")
-        if source and urlparse(source).netloc != request.host:
+        if not source or urlparse(source).netloc != request.host:
             abort(403)
     return None
 
@@ -147,7 +149,8 @@ def root():
     import dashboard_logic as dash
 
     ctx = dash.DashboardContext(today_tr())
-    home = dash.build_home_context(ctx, now_tr())
+    gelir_gizli = session.get("gelir_gizli", True)
+    home = dash.build_home_context(ctx, now_tr(), gelir_gizli)
 
     return render_template(
         "home.html",

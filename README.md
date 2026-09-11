@@ -23,6 +23,7 @@ python desktop.py             # masaüstü pencere
 | `BBA_USER` / `BBA_PASS` | İkisi de doluysa tüm sayfalar HTTP Basic Auth ister. **Herkese açık bir sunucuda (PythonAnywhere) zorunlu** — aksi halde adresi bilen herkes finans/maaş verisini görür. Yerelde boş bırakılırsa auth kapalıdır. |
 | `BBA_SECRET_KEY` | Oturum imzalama. Boşsa her başlatmada rastgele üretilir. |
 | `BBA_MYSQL_URI` | Doluysa MySQL, boşsa yerel SQLite (`data/personal_os.db`). |
+| `BBA_DB_URI` | İç/test amaçlı SQLAlchemy URI, tanımlıysa `BBA_MYSQL_URI`/SQLite dahil her şeyi ezer. Normal kullanımda boş bırak. |
 | `BBA_DEBUG` | `1` ise `python app.py` Werkzeug debugger'ı açar. Sunucuda ayarlama. |
 
 ## Modüller
@@ -61,3 +62,7 @@ pytest
 
 Uzun vadeli vizyon ve sıradaki geliştirme aşamaları için `ROADMAP.md`
 dosyasına bak.
+
+## Dağıtım
+
+Uygulamayı PythonAnywhere'de yayına almak için `DEPLOY.md` dosyasına bak.

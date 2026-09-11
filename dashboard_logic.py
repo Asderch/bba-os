@@ -12,7 +12,7 @@ import calendar
 from datetime import timedelta
 
 from extensions import db
-from common import TR_MONTHS, TR_WEEKDAYS
+from common import TR_MONTHS, TR_WEEKDAYS, month_bounds
 from salary import calculate_salary
 from models import (
     DailyTask, DailyTaskCompletion, DeadlineTask,
@@ -26,7 +26,10 @@ CONTEXT_LOOKBACK_DAYS = 90  # tüm alt hesaplamaların ihtiyaç duyduğu en geni
 class DashboardContext:
     """
     Tek bir istek için gereken tüm günlük performans verisini önceden,
-    toplu sorgularla çeker. Bu nesne oluşturulduğunda toplam 2-3 sorgu atılır,
+    toplu sorgularla çeker. Bu nesne oluşturulduğunda yaklaşık 10-20 sorgu
+    atılır (activity_start hesaplaması, aktif görev/alışkanlık listeleri,
+    tamamlama pencereleri ve ay-bazlı bütçe/mesai verisi dahil — tam sayı
+    görev/alışkanlık sayısına ve ay geçişi olup olmamasına göre değişir),
     sonrasında daily_is_pct/daily_aliskanlik_pct/daily_blended_pct çağrıları
     hiç veritabanına gitmez.
     """
@@ -41,7 +44,8 @@ class DashboardContext:
         # sıfırla doldurup yanıltıcı (ve cesaret kırıcı) çıkıyordu.
         self.activity_start = self._compute_activity_start(today)
 
-        self.total_daily_tasks = DailyTask.query.count()
+        self.total_daily_tasks = DailyTask.query.filter_by(active=True).count()
+        daily_task_ids = {t.id for t in DailyTask.query.filter_by(active=True).all()}
 
         self.habits = Habit.query.filter_by(active=True).all()
         self.max_puan = sum(h.impact for h in self.habits)
@@ -53,7 +57,8 @@ class DashboardContext:
         ).all()
         self.daily_done_by_date = {}
         for c in daily_completions:
-            self.daily_done_by_date.setdefault(c.completion_date, set()).add(c.daily_task_id)
+            if c.daily_task_id in daily_task_ids:  # arşivlenmiş görevler günlük performansa katılmasın
+                self.daily_done_by_date.setdefault(c.completion_date, set()).add(c.daily_task_id)
 
         habit_completions = HabitCompletion.query.filter(
             HabitCompletion.completion_date >= self.window_start,
@@ -129,13 +134,18 @@ class DashboardContext:
 
 
 # ----------------------------------------------------------------------
-def compute_life_score(ctx, for_day=None):
+def compute_life_score(ctx, for_day=None, gelir_gizli=False):
     """
     0-100 arası Life Score. Sadece 'bugünü' değil, o günle birlikte önceki 7
     günün ortalamasını da harmanlıyor — tek bir iyi/kötü gün skoru gereğinden
     fazla oynatmasın diye. `for_day` verilmezse ctx.today kullanılır (geriye
     dönük tahmin için farklı bir gün de verilebilir - Bütçe hedef boyutu o
-    durumda yine ctx.today'in ayına göre hesaplanır, basitleştirme).
+    durumda `for_day`'in KENDİ ayına göre hesaplanır, bkz. `_finans_pace_pct`).
+
+    `gelir_gizli=True` iken Finans boyutu HİÇ EKLENMEZ (0/None ile doldurmak
+    değil, tamamen dışarıda bırakmak) — yoksa is%/al% zaten görünürken
+    `finans = 3*life_score - is% - al%` ile gelir geri hesaplanabilir, gizleme
+    sadece görsel/yüzeysel kalırdı.
     """
     day = for_day or ctx.today
     parts = []
@@ -155,33 +165,62 @@ def compute_life_score(ctx, for_day=None):
         al_week_avg = sum(al_week_vals) / len(al_week_vals) if al_week_vals else al_pct_today
         parts.append((al_pct_today + al_week_avg) / 2)
 
-    # Bütçe boyutu ctx'te önceden hesaplanan bu-ay verisinden (basitleştirme:
-    # geçmiş günler için de bu ayın durumu kullanılır). Uygulama kullanılmaya
-    # başlanmadan önceki günler için EKLENMEZ — yoksa hedef tanımlıyken
-    # compute_life_score hiçbir gün None dönmez ve trend, olmayan bir geçmiş
-    # için sahte "sadece-finans" puan üretir.
-    if ctx.month_goal_amount and day >= ctx.activity_start:
-        parts.append(_finans_pace_pct(ctx))
+    # Bütçe boyutu: `for_day`'in kendi ayına göre (bkz. _finans_pace_pct).
+    # Uygulama kullanılmaya başlanmadan önceki günler için EKLENMEZ — yoksa
+    # hedef tanımlıyken compute_life_score hiçbir gün None dönmez ve trend,
+    # olmayan bir geçmiş için sahte "sadece-finans" puan üretir. Ayrıca ayın
+    # ilk FINANS_GUVENILMEZ_GUN günü de eklenmez (maaş henüz girilmemiş
+    # olabilir — life_score_breakdown'daki "en zayıf boyut" eşiğiyle tutarlı).
+    if not gelir_gizli and day >= ctx.activity_start and day.day > FINANS_GUVENILMEZ_GUN:
+        fin_pct = _finans_pace_pct(ctx, day)
+        if fin_pct is not None:
+            parts.append(fin_pct)
 
     if not parts:
         return None
     return round(sum(parts) / len(parts))
 
 
-def _finans_pace_pct(ctx):
+def _finans_pace_pct(ctx, for_day):
     """
     Bütçe boyutu: net birikimin, ayın geçen kısmına göre BEKLENEN tempoya
     oranı (0-100). Düz `net/hedef` değil — çünkü maaş ay ortasında girildiği
     için ayın ilk yarısı net hep negatif/sıfır çıkıyor ve "en büyük fırsat
     hep Finans" oluyordu.
+
+    `for_day` ctx.today ile aynı ay ise ctx'in önbelleğe alınmış ay verisi
+    kullanılır (ek sorgu yok). Farklı bir ay ise (life_score_history/delta ay
+    geçişlerinde geçmiş bir güne bakabilir) o ayın MonthlyGoal/Transaction
+    toplamlarını KENDİ sorgusuyla çeker — yoksa geçmiş bir güne yanlışlıkla
+    ctx.today'in ayının verisi yapıştırılırdı. O ay için hedef tanımlı
+    değilse None döner (çağıran hiç eklemez — düz 0 değil, çünkü 0 "kötü
+    performans" anlamına gelirken None "bu boyut yok" anlamına gelir).
     """
-    if not ctx.month_goal_amount:
-        return 0
-    elapsed = max(1, ctx.today.day) / ctx.month_days_total
-    pace_target = ctx.month_goal_amount * elapsed
+    if for_day.year == ctx.today.year and for_day.month == ctx.today.month:
+        goal_amount = ctx.month_goal_amount
+        month_net = ctx.month_net
+        month_days_total = ctx.month_days_total
+    else:
+        goal = MonthlyGoal.query.filter_by(year=for_day.year, month=for_day.month).first()
+        goal_amount = goal.target_amount if (goal and goal.target_amount > 0) else None
+        if not goal_amount:
+            return None
+        f_start, f_end = month_bounds(for_day.year, for_day.month)
+        f_txs = Transaction.query.filter(
+            Transaction.entry_date >= f_start, Transaction.entry_date <= f_end
+        ).all()
+        f_income = sum(t.amount for t in f_txs if t.kind == "gelir")
+        f_expense = sum(t.amount for t in f_txs if t.kind == "gider")
+        month_net = f_income - f_expense
+        month_days_total = calendar.monthrange(for_day.year, for_day.month)[1]
+
+    if not goal_amount:
+        return None
+    elapsed = max(1, for_day.day) / month_days_total
+    pace_target = goal_amount * elapsed
     if pace_target <= 0:
         return 0
-    return min(100, max(0, ctx.month_net / pace_target * 100))
+    return min(100, max(0, month_net / pace_target * 100))
 
 
 MIN_LIFESCORE_DAYS = 3  # bundan az günlük veriyle Life Score göstermek yerine "toplanıyor" denir
@@ -196,13 +235,18 @@ def _blend_today_week(today_val, week_vals):
     return (today_val + wk) / 2
 
 
-def life_score_breakdown(ctx):
+def life_score_breakdown(ctx, gelir_gizli=False):
     """
     Life Score'un 3 puanlı boyutu (İş / Alışkanlık / Finans) — her biri 0-100
     veya veri yoksa None. "78 — ama alışkanlıkta gelişim alanı var" tarzı bir
     okuma için: sayı bir not değil, nereye dokunacağını söyleyen harita.
     Mesai bir PUAN değil (azaltılabilir/opsiyonel bir emek); ayrı bir bilgi
     olarak `mesai_saat` döner, çubuk/skor yok.
+
+    `gelir_gizli=True` iken `fin_b` None'a zorlanır — hem "en zayıf boyut"
+    seçiminden otomatik dışlanır (aşağıdaki filtre zaten None'ları eler) hem
+    de template'te `{{ v ~ '%' if v is not none else '—' }}` sayesinde "—"
+    olarak görünür, gerçek finans verisi HTML'e hiç girmez.
     """
     day = ctx.today
     week = [day - timedelta(days=i) for i in range(7)]
@@ -215,7 +259,9 @@ def life_score_breakdown(ctx):
         ctx.daily_aliskanlik_pct(day),
         [v for v in (ctx.daily_aliskanlik_pct(d) for d in week) if v is not None],
     )
-    fin_b = _finans_pace_pct(ctx) if ctx.month_goal_amount else None
+    fin_b = _finans_pace_pct(ctx, day)
+    if gelir_gizli:
+        fin_b = None
 
     def r(v):
         return round(v) if v is not None else None
@@ -244,41 +290,46 @@ def life_score_days(ctx):
     )
 
 
-def life_score_history(ctx, days=14):
+def life_score_history(ctx, days=14, gelir_gizli=False):
     """Son N günün Life Score tahminini döner: [{'date': ..., 'score': ...}, ...] (eskiden yeniye)."""
     history = []
     for i in range(days - 1, -1, -1):
         d = ctx.today - timedelta(days=i)
-        score = compute_life_score(ctx, for_day=d)
+        score = compute_life_score(ctx, for_day=d, gelir_gizli=gelir_gizli)
         history.append({"date": d, "score": score})
     return history
 
 
-def life_score_delta(ctx):
+def life_score_delta(ctx, gelir_gizli=False):
     """Bugünün Life Score'u ile dünkü arasındaki fark (yüzde puan). Biri eksikse None."""
-    today_score = compute_life_score(ctx, for_day=ctx.today)
-    yesterday_score = compute_life_score(ctx, for_day=ctx.today - timedelta(days=1))
+    today_score = compute_life_score(ctx, for_day=ctx.today, gelir_gizli=gelir_gizli)
+    yesterday_score = compute_life_score(ctx, for_day=ctx.today - timedelta(days=1), gelir_gizli=gelir_gizli)
     if today_score is None or yesterday_score is None:
         return None
     return today_score - yesterday_score
 
 
 # ----------------------------------------------------------------------
+MIN_MOMENTUM_DAYS = 5  # bundan az günlük veriyle 14 günlük pencere karşılaştırması yanıltıcı olur
+
+
 def compute_momentum(ctx):
     """Son 14 gün ile önceki 14 günün ortalama performansı arasındaki fark (yüzde puan)."""
     today = ctx.today
 
     def avg_pct(days):
         vals = [v for v in (ctx.daily_blended_pct(d) for d in days) if v is not None]
-        return sum(vals) / len(vals) if vals else None
+        return (sum(vals) / len(vals), len(vals)) if vals else (None, 0)
 
     last_14 = [today - timedelta(days=i) for i in range(0, 14)]
     prev_14 = [today - timedelta(days=i) for i in range(14, 28)]
 
-    avg_last = avg_pct(last_14)
-    avg_prev = avg_pct(prev_14)
+    avg_last, n_last = avg_pct(last_14)
+    avg_prev, n_prev = avg_pct(prev_14)
 
     if avg_last is None or avg_prev is None:
+        return None
+    if n_last < MIN_MOMENTUM_DAYS or n_prev < MIN_MOMENTUM_DAYS:
         return None
     return round(avg_last - avg_prev)
 
@@ -355,7 +406,10 @@ def dashboard_priorities(ctx, limit=3):
             break
 
     todays_done_ids = ctx.daily_done_by_date.get(ctx.today, set())
-    daily_tasks = DailyTask.query.order_by(DailyTask.sort_order).all()
+    # active=True: arşivlenmiş görevler ne öncelik listesinde görünsün ne de
+    # done_today/total_today sayaçlarına girsin (ctx.total_daily_tasks'la
+    # tutarlı — ikisi de aynı "aktif görev" tanımını kullanmalı).
+    daily_tasks = DailyTask.query.filter_by(active=True).order_by(DailyTask.sort_order).all()
     if len(priorities) < limit:
         undone = [t for t in daily_tasks if t.id not in todays_done_ids]
         for t in undone[: limit - len(priorities)]:
@@ -374,7 +428,7 @@ def dashboard_priorities(ctx, limit=3):
 
 # ----------------------------------------------------------------------
 # V4: Kural tabanlı içgörüler - yeterli veri yoksa None döner, hiç gösterilmez
-TR_WEEKDAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+from common import TR_WEEKDAYS as TR_WEEKDAY_NAMES
 MIN_SAMPLES_PER_GROUP = 3
 
 
@@ -632,17 +686,22 @@ def get_insights(ctx, max_insights=3):
 # Ana ekran (home.html) için tek noktadan bağlam kurulumu.
 # Eskiden bu ~120 satır app.py'nin root() view'ının içindeydi.
 # ======================================================================
-def build_home_context(ctx, now):
+def build_home_context(ctx, now, gelir_gizli):
     """
     home.html'in ihtiyaç duyduğu HER ŞEYİ tek sözlükte döner. `ctx` önceden
     kurulmuş bir DashboardContext, `now` Türkiye saatiyle şu an (datetime).
+    `gelir_gizli` ZORUNLU (varsayılan yok) — Life Score'un Finans bileşenini
+    gerçekten kapatmak için compute_life_score/life_score_breakdown/
+    life_score_history/life_score_delta'nın hepsine geçirilir; unutulursa
+    (varsayılan verilseydi) gelir gizliyken bile finans verisi Life Score'a
+    sızabilirdi.
     """
     today = ctx.today
 
     # --- Life Score + boyutlar ---
-    life_score = compute_life_score(ctx)
+    life_score = compute_life_score(ctx, gelir_gizli=gelir_gizli)
     ls_days = life_score_days(ctx)
-    breakdown = life_score_breakdown(ctx)
+    breakdown = life_score_breakdown(ctx, gelir_gizli=gelir_gizli)
 
     # --- Bugün şeridi ---
     is_daily_count = ctx.total_daily_tasks
@@ -664,7 +723,7 @@ def build_home_context(ctx, now):
     mesai_month_amount = mesai_calc.get("mesai_tutari")
 
     # --- Trend (SVG) ---
-    history = life_score_history(ctx, days=14)
+    history = life_score_history(ctx, days=14, gelir_gizli=gelir_gizli)
     chart_w, chart_h = 280, 70
     n = len(history)
     pts = []
@@ -692,7 +751,7 @@ def build_home_context(ctx, now):
         "weekday_str": TR_WEEKDAYS[today.weekday()],
 
         "life_score": life_score,
-        "life_score_delta": life_score_delta(ctx),
+        "life_score_delta": life_score_delta(ctx, gelir_gizli=gelir_gizli),
         "life_score_low": ls_days < MIN_LIFESCORE_DAYS,
         "life_score_days": ls_days,
         "breakdown": breakdown,

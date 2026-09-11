@@ -3,9 +3,7 @@
 {% block title %}Abonelikler{% endblock %}
 
 {% block inner %}
-<h2 class="page-title mt-3 mb-3">Abonelikler</h2>
-
-<div class="row row-deck row-cards mb-3">
+<div class="row row-deck row-cards mb-3 mt-3">
     <div class="col-sm-6 col-lg-4">
         <div class="card card-sm"><div class="card-body">
             <div class="font-weight-medium font-mono">{{ '%.2f' | format(total_monthly) }} ₺</div>
@@ -82,7 +80,7 @@
         {% for row in rows %}
         <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
+                <span class="badge {{ 'bba-tag-overdue' if row.urgency == 'gecikmis' else ('bba-tag-soon' if row.urgency == 'yaklasan' else 'bba-tag-neutral') }}">
                     {% if row.urgency == 'gecikmis' %}{{ -row.days_left }} gün gecikti
                     {% elif row.days_left == 0 %}Bugün
                     {% else %}{{ row.days_left }} gün kaldı{% endif %}

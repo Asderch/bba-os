@@ -1,4 +1,2 @@
-Flask==3.0.3
-Werkzeug==3.0.6
-Flask-SQLAlchemy==3.1.1
+-r requirements-base.txt
 PyMySQL==1.1.1

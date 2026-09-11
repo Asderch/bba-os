@@ -1,6 +1,8 @@
 """Gelir gizleme: gizli iken gerçek gelir değeri HTML'e HİÇ girmemeli."""
-from datetime import date
+from datetime import date, timedelta
 from common import today_tr as _today
+
+import pytest
 
 
 def _seed_income(appmod):
@@ -55,6 +57,51 @@ def test_dashboard_hides_mesai_amount_when_hidden(client, flask_app):
     client.post("/butce/gelir-gizle")    # göster
     shown = client.get("/").get_data(as_text=True)
     assert "3.333" in shown              # ₺ tahmini artık görünür
+
+
+def test_home_life_score_excludes_finans_when_hidden(client, flask_app):
+    """Life Score'un KENDİSİ bile finans verisini sızdırmamalı: is/al %100
+    iken gizli modda skor tam olarak is/al ortalaması olmalı (finans dahil
+    olsaydı düşerdi, çünkü hedefi kasıtlı büyük tuttuk) — yoksa is%/al% zaten
+    görünürken `finans = 3*life_score - is% - al%` ile gelir geri hesaplanabilirdi."""
+    import app as appmod
+    from extensions import db
+    from models import DailyTask, DailyTaskCompletion, Habit, HabitCompletion, MonthlyGoal, Transaction
+    import dashboard_logic as dash
+
+    today = _today()
+    if today.day <= dash.FINANS_GUVENILMEZ_GUN:
+        pytest.skip("ayın ilk günlerinde finans zaten hiç eklenmiyor, test bu tarihte ayırt edici değil")
+
+    with appmod.app.app_context():
+        start = today - timedelta(days=14)
+        task = DailyTask(title="T", sort_order=1)
+        habit = Habit(name="H", impact=5, frequency_type="gunluk", active=True)
+        db.session.add_all([task, habit])
+        db.session.commit()
+        d = start
+        while d <= today:
+            db.session.add(DailyTaskCompletion(daily_task_id=task.id, completion_date=d))
+            db.session.add(HabitCompletion(habit_id=habit.id, completion_date=d))
+            d += timedelta(days=1)
+        # Hedefi kasıtlı büyük tutuyoruz: dahil edilseydi tempo düşük kalır,
+        # skor 100'ün belirgin şekilde altına düşerdi.
+        db.session.add(MonthlyGoal(year=today.year, month=today.month, target_amount=100000))
+        db.session.add(Transaction(entry_date=today, kind="gelir", category="Maaş", amount=100))
+        db.session.commit()
+
+        ctx = dash.DashboardContext(today)
+        score_hidden = dash.compute_life_score(ctx, gelir_gizli=True)
+        score_shown = dash.compute_life_score(ctx, gelir_gizli=False)
+    assert score_hidden == 100
+    assert score_shown < 100  # finans dahil olunca gerçekten düşüyor
+
+    hidden_html = client.get("/").get_data(as_text=True)
+    assert f">{score_hidden}<" in hidden_html or f"{score_hidden}<span" in hidden_html
+
+    client.post("/butce/gelir-gizle")   # göster
+    shown_html = client.get("/").get_data(as_text=True)
+    assert f">{score_shown}<" in shown_html or f"{score_shown}<span" in shown_html
 
 
 def test_mesai_pages_mask_salary_when_hidden(client, flask_app):

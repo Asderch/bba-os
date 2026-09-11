@@ -2,9 +2,10 @@
 {% from "_icons.html" import icon, impact_meter %}
 {% block title %}{{ habit.name }}{% endblock %}
 
+{% block page_context %}<div class="bba-page-context">{{ habit.name }} {{ impact_meter(habit.impact) }}</div>{% endblock %}
+
 {% block inner %}
 <div class="page-header mt-3 mb-3">
-    <h2 class="page-title mb-1">{{ habit.name }} {{ impact_meter(habit.impact) }}</h2>
     {% if habit.why %}<p class="text-secondary mb-0">{{ habit.why }}</p>{% endif %}
     <p class="text-secondary small">
         {{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}

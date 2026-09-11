@@ -1,8 +1,9 @@
 {% extends "aliskanlik/_layout.html" %}
 {% block title %}Düzenle{% endblock %}
 
+{% block page_context %}<div class="bba-page-context">'{{ habit.name }}' Düzenle</div>{% endblock %}
+
 {% block inner %}
-<h2 class="page-title mt-3 mb-3">'{{ habit.name }}' Düzenle</h2>
 
 <div class="card">
     <div class="card-body">

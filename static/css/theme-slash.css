@@ -64,6 +64,8 @@ body { background: var(--bba-bg); color: var(--bba-text); font-family: var(--fon
 }
 .btn { border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .btn .ti { flex-shrink: 0; }
+/* Tabler'ın btn-icon.btn-sm'i ~30px'e kadar küçülüyor — dokunma hedefini büyüt (tam 44px tablo satırlarını şişirir, 36px makul bir denge). */
+.btn-icon.btn-sm { min-width: 36px; min-height: 36px; }
 .badge { display: inline-flex; align-items: center; gap: 4px; }
 .card-title, .list-group-item .fw-medium { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
@@ -124,6 +126,7 @@ textarea:focus-visible, [tabindex]:focus-visible,
 .bba-page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-3); }
 .bba-page-title { font-weight: 600; font-size: 1.5rem; letter-spacing: -0.02em; color: var(--bba-white); margin: 0; display: inline-flex; align-items: center; gap: 10px; }
 .bba-page-title .ti { color: var(--bba-copper); }
+.bba-page-context { font-size: 0.85rem; color: var(--bba-text-muted); margin-top: calc(-1 * var(--space-2)); margin-bottom: var(--space-4); }
 .bba-subnav { display: flex; gap: var(--space-1); flex-wrap: wrap; border-bottom: 1px solid var(--bba-border); }
 .bba-subnav-link { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-size: 0.8rem; font-weight: 500; color: var(--bba-text-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .bba-subnav-link:hover { color: var(--bba-white); }
@@ -171,6 +174,7 @@ textarea:focus-visible, [tabindex]:focus-visible,
 /* alt-boyut çubukları (3 puanlı boyut) */
 .bba-dims { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-top: var(--space-5); }
 .bba-dims-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 400px) { .bba-dims-3 { grid-template-columns: repeat(1, 1fr); } }
 .bba-dim-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .bba-dim-label { font-size: 0.78rem; color: var(--bba-text-muted); }
 .bba-dim-pct { font-size: 0.8rem; font-family: var(--app-mono); color: var(--bba-text); }
@@ -189,13 +193,17 @@ textarea:focus-visible, [tabindex]:focus-visible,
     border-bottom: 1px solid var(--bba-border);
 }
 .bba-priority-row:last-child { border-bottom: none; }
-.bba-priority-check-btn { background: none; border: none; padding: 8px; margin: -8px; cursor: pointer; flex-shrink: 0; }
+.bba-priority-check-btn { background: none; border: none; padding: 11px; margin: -11px; cursor: pointer; flex-shrink: 0; }
 .bba-priority-title { flex: 1; font-size: 0.9rem; color: var(--bba-text); }
-.bba-tag-overdue, .bba-tag-soon {
+.bba-tag-overdue, .bba-tag-soon, .bba-tag-positive, .bba-tag-neutral, .bba-tag-streak {
     font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-pill); flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 3px;
 }
 .bba-tag-overdue { background: var(--bba-negative-dim); color: var(--bba-negative); }
 .bba-tag-soon { background: var(--bba-copper-dim); color: var(--bba-copper); }
+.bba-tag-positive { background: var(--bba-positive-dim); color: var(--bba-positive); }
+.bba-tag-neutral { background: var(--bba-border); color: var(--bba-text-muted); }
+.bba-tag-streak { background: var(--bba-copper-dim); color: var(--bba-copper); }
 
 .bba-compact-check {
     width: 22px; height: 22px; border-radius: var(--radius-pill); border: 1px solid var(--bba-border-secondary);
@@ -220,8 +228,10 @@ textarea:focus-visible, [tabindex]:focus-visible,
 
 /* Bugün şeridi */
 .bba-today-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+.bba-today-grid-3 { grid-template-columns: repeat(3, 1fr); }
 @media (min-width: 640px) { .bba-today-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 640px) { .bba-today-grid-3 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 400px) { .bba-today-grid-3 { grid-template-columns: repeat(1, 1fr); } }
 .bba-today-number { font-family: var(--app-mono); font-size: 1.5rem; font-weight: 600; color: var(--bba-white); font-variant-numeric: tabular-nums; }
 .bba-today-sep { color: var(--bba-text-muted); font-size: 1rem; }
 .bba-today-flag { font-size: 0.72rem; color: var(--bba-copper); margin-top: 4px; }
@@ -281,5 +291,5 @@ textarea:focus-visible, [tabindex]:focus-visible,
     .bba-hamburger-label { font-size: 0.85rem; font-weight: 600; color: var(--bba-text-muted); }
     .bba-hero-score { font-size: 3rem; }
     .bba-hero-secondary { gap: var(--space-4); }
-    .bba-dims, .bba-dims-3 { grid-template-columns: repeat(2, 1fr); }
+    .bba-dims { grid-template-columns: repeat(2, 1fr); }
 }

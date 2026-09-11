@@ -60,6 +60,9 @@ def _get_last_known_salary(before_year, before_month):
     return row.net_salary if row else None
 
 
+# Bilinçli ince wrapper'lar (common.py'nin thin-wrapper deseni) — butce.py'de
+# birebir aynısı var; ikisi de sadece request.args/form'u clamp/valid_year_month'a
+# bağlıyor, blueprint'e özgü bir davranış eklemiyorlar.
 def _parse_month_arg():
     return clamp_year_month(request.args.get("year", type=int), request.args.get("month", type=int))
 

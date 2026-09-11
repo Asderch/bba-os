@@ -9,5 +9,6 @@
         <a href="{{ url_for('aliskanlik.stats') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'aliskanlik.stats' }}">İstatistik</a>
     </div>
 </div>
+{% block page_context %}{% endblock %}
 {% block inner %}{% endblock %}
 {% endblock %}

@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 # (tablo, kolon, SQL tipi) — var olan DB'lerde eksikse eklenecek kolonlar.
 _ADDED_COLUMNS = [
     ("transactions", "source", "VARCHAR(64)"),
+    ("daily_tasks", "active", "BOOLEAN DEFAULT 1"),
 ]
 
 

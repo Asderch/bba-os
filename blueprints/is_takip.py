@@ -52,7 +52,7 @@ def _get_tag_id():
 def index():
     today = today_tr()
 
-    daily_tasks = DailyTask.query.order_by(DailyTask.sort_order).all()
+    daily_tasks = DailyTask.query.filter_by(active=True).order_by(DailyTask.sort_order).all()
     todays_completions = {
         c.daily_task_id
         for c in DailyTaskCompletion.query.filter_by(completion_date=today).all()
@@ -108,13 +108,14 @@ def delete_deadline_task(task_id):
 # ----------------------------------------------------------------------
 @bp.route("/yonet")
 def manage_tasks():
-    daily_tasks = DailyTask.query.order_by(DailyTask.sort_order).all()
+    daily_tasks = DailyTask.query.filter_by(active=True).order_by(DailyTask.sort_order).all()
+    archived = DailyTask.query.filter_by(active=False).order_by(DailyTask.title).all()
     today = today_tr()
     deadline_tasks = DeadlineTask.query.filter_by(done=False).order_by(DeadlineTask.due_date.asc()).all()
     deadline_rows = [{"task": t, "urgency": _urgency(t.due_date, today)} for t in deadline_tasks]
     tags = Tag.query.order_by(Tag.name).all()
     return render_template(
-        "is_takip/yonet.html", daily_tasks=daily_tasks, deadline_rows=deadline_rows,
+        "is_takip/yonet.html", daily_tasks=daily_tasks, archived=archived, deadline_rows=deadline_rows,
         today=today.isoformat(), tags=tags, tag_colors=TAG_COLORS,
     )
 
@@ -156,9 +157,34 @@ def add_daily_task():
     return redirect(url_for("is_takip.manage_tasks"))
 
 
+@bp.route("/daily/<int:task_id>/archive", methods=["POST"])
+def archive_daily_task(task_id):
+    task = DailyTask.query.get_or_404(task_id)
+    task.active = False
+    db.session.commit()
+    flash(f"'{task.title}' arşivlendi — geçmiş kaydı korunuyor, istediğinde geri aktifleştirebilirsin.")
+    return redirect(url_for("is_takip.manage_tasks"))
+
+
+@bp.route("/daily/<int:task_id>/unarchive", methods=["POST"])
+def unarchive_daily_task(task_id):
+    task = DailyTask.query.get_or_404(task_id)
+    task.active = True
+    db.session.commit()
+    flash(f"'{task.title}' tekrar aktif.")
+    return redirect(url_for("is_takip.manage_tasks"))
+
+
 @bp.route("/daily/<int:task_id>/delete", methods=["POST"])
 def delete_daily_task(task_id):
+    """Kalıcı silme — sadece arşivlenmiş görevler için (geçmişiyle birlikte gider).
+    Aktif bir görev silinmek istenirse reddedilir, önce arşivlemesi istenir —
+    yoksa cascade ile geçmiş tamamlama kayıtları gider ve geçmiş Life Score'lar
+    geriye dönük değişir (payda güncel görev sayısına göre yeniden hesaplanır)."""
     task = DailyTask.query.get_or_404(task_id)
+    if task.active:
+        flash(f"'{task.title}' önce arşivlenmeli — aktif bir görev kalıcı silinemez.")
+        return redirect(url_for("is_takip.manage_tasks"))
     db.session.delete(task)
     db.session.commit()
     return redirect(url_for("is_takip.manage_tasks"))
@@ -232,8 +258,13 @@ def stats():
     week_start = today - timedelta(days=today.weekday())
     week_days = [week_start + timedelta(days=i) for i in range(7)]
 
-    daily_tasks = DailyTask.query.all()
-    daily_task_count = len(daily_tasks)
+    # Habit.stats() ile aynı desen (blueprints/aliskanlik.py): payda sadece
+    # aktif görevleri sayar, arşivlenmiş görevler "güncel görev sayısı"na
+    # dahil edilmez. Ama haftalık tamamlama kayıtları (aşağıdaki
+    # completions_this_week) tarihe göre filtrelenir, görev aktifliğine göre
+    # DEĞİL — bir görev o gün aktifken tamamlanmışsa, sonradan arşivlense
+    # bile o günün "done" sayısına girmeye devam eder (geçmiş bütünlüğü).
+    daily_task_count = DailyTask.query.filter_by(active=True).count()
 
     completions_this_week = (
         DailyTaskCompletion.query

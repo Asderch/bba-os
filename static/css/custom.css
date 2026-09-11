@@ -22,7 +22,7 @@
 
 /* Checkbox (günlük iş / alışkanlık) */
 .daily-check {
-    width: 40px; height: 40px; border-radius: 9px; border: 1px solid var(--bba-border-secondary);
+    width: 44px; height: 44px; border-radius: 9px; border: 1px solid var(--bba-border-secondary);
     background: transparent; color: var(--bba-bg); font-size: 1rem; font-weight: 800;
     cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1;
     transition: background 0.12s, border-color 0.12s;
@@ -46,7 +46,7 @@
 .mini-calendar-label { font-size: 0.85rem; font-weight: 700; }
 .mini-calendar-nav {
     background: transparent; border: 1px solid var(--bba-border-secondary); color: var(--bba-text);
-    width: 40px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+    width: 44px; height: 44px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
 }
 .mini-calendar-nav:hover { border-color: var(--bba-white); color: var(--bba-white); }
 .mini-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }

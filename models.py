@@ -1,5 +1,6 @@
 from extensions import db
 from common import local_now as _local_now
+from common import TR_WEEKDAYS as WEEKDAYS
 
 
 # ============================================================
@@ -25,6 +26,7 @@ class DailyTask(db.Model):
     note = db.Column(db.Text)
     sort_order = db.Column(db.Integer, default=0)
     tag_id = db.Column(db.Integer, db.ForeignKey("tags.id"))
+    active = db.Column(db.Boolean, default=True)   # False = arşivlenmiş, geçmiş verisi korunur
     created_at = db.Column(db.DateTime, default=_local_now)
 
     completions = db.relationship("DailyTaskCompletion", backref="task", lazy=True, cascade="all, delete-orphan")
@@ -195,7 +197,8 @@ class MonthlySalary(db.Model):
 # ============================================================
 # ALIŞKANLIK TAKİP
 # ============================================================
-WEEKDAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+# WEEKDAYS artık common.TR_WEEKDAYS'in re-export'u (dosya başındaki import
+# bloğuna bakın) — aliskanlik.py hiç değişmeden aynı ismi kullanmaya devam eder.
 
 # (isim, neden, etki[1-5], sıklık['gunluk'|'haftalik'], haftalık_hedef)
 DEFAULT_HABITS = [

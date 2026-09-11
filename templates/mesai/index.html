@@ -2,16 +2,13 @@
 {% from "_icons.html" import icon %}
 {% block title %}Mesai Takip{% endblock %}
 
+{% block page_context %}<div class="bba-page-context">{{ month_name }} {{ year }}</div>{% endblock %}
+
 {% block inner %}
-<div class="page-header d-print-none mb-3 mt-3">
-    <div class="row g-2 align-items-center">
-        <div class="col"><h2 class="page-title">{{ month_name }} {{ year }}</h2></div>
-        <div class="col-auto ms-auto">
-            <div class="btn-list">
-                <a href="{{ url_for('mesai.index', year=prev_year, month=prev_month) }}" class="btn btn-outline-secondary btn-sm">← Önceki Ay</a>
-                <a href="{{ url_for('mesai.index', year=next_year, month=next_month) }}" class="btn btn-outline-secondary btn-sm">Sonraki Ay →</a>
-            </div>
-        </div>
+<div class="page-header d-print-none mb-3 mt-3 d-flex justify-content-end">
+    <div class="btn-list">
+        <a href="{{ url_for('mesai.index', year=prev_year, month=prev_month) }}" class="btn btn-outline-secondary btn-sm">← Önceki Ay</a>
+        <a href="{{ url_for('mesai.index', year=next_year, month=next_month) }}" class="btn btn-outline-secondary btn-sm">Sonraki Ay →</a>
     </div>
 </div>
 

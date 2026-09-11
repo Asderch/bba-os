@@ -35,6 +35,9 @@ def format_entry_date(d):
     return f"{d.strftime('%d.%m')} {TR_WEEKDAYS[d.weekday()]}"
 
 
+# Bilinçli ince wrapper'lar (common.py'nin thin-wrapper deseni) — mesai.py'de
+# birebir aynısı var; ikisi de sadece request.args/form'u clamp/valid_year_month'a
+# bağlıyor, blueprint'e özgü bir davranış eklemiyorlar.
 def _parse_month_arg():
     return clamp_year_month(request.args.get("year", type=int), request.args.get("month", type=int))
 

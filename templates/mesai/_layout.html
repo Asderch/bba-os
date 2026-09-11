@@ -9,6 +9,7 @@
         <a href="{{ url_for('mesai.profil') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'mesai.profil' }}">Profil</a>
     </div>
 </div>
+{% block page_context %}{% endblock %}
 {% if entered_months is defined and entered_months %}
 <div class="d-flex flex-wrap gap-2 mb-3">
     {% for ey, em in entered_months %}

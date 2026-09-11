@@ -27,4 +27,6 @@ def flask_app():
 
 @pytest.fixture()
 def client(flask_app):
-    return flask_app.test_client()
+    c = flask_app.test_client()
+    c.environ_base["HTTP_ORIGIN"] = "http://localhost"
+    return c
