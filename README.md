@@ -1,7 +1,8 @@
 # BBA OS
 
-4 modülü (İş Takip, Bütçe Takip, Mesai Takip, Alışkanlık Takip) tek bir
-Flask uygulaması ve tek bir veritabanında birleştiren kişisel sistem.
+6 modülü (İş Takip, Bütçe Takip, Mesai Takip, Alışkanlık Takip, Analizler,
+Notlar) tek bir Flask uygulaması ve tek bir veritabanında birleştiren
+kişisel sistem.
 
 ## Kurulum (kendi bilgisayarında)
 
@@ -29,19 +30,24 @@ python desktop.py             # masaüstü pencere
 ## Modüller
 
 - **İş Takip** (`/is`) — günlük işler (checkbox), terminli işler (tarih
-  bazlı, aciliyet renkli), etiketler, notlar, geçmiş, istatistik
+  bazlı, aciliyet renkli), etiketler, geçmiş
 - **Bütçe Takip** (`/butce`) — gelir/gider takibi, kategori dağılım
   grafiği, gelir gizleme, abonelik takibi (otomatik gider kaydı ile)
 - **Mesai Takip** (`/mesai`) — fazla mesai kaydı, maaş hesaplama
   (Excel formülüne dayalı)
 - **Alışkanlık Takip** (`/aliskanlik`) — hedef koymadan işaretleme,
   "neden" açıklaması, etki puanı, hazır 8'li başlangıç seti
+- **Analizler** (`/analizler`) — tüm modülleri (İş/Alışkanlık/Finans/Mesai)
+  tek sayfada toplayan analiz görünümü: Life Score, momentum, istikrar,
+  içgörüler, İş Takip haftalık tablosu
+- **Notlar** (`/notlar`) — herhangi bir konuda tutulabilen, tüm
+  modüllerden erişilen serbest not defteri
 
 ## Veri Yedekleme
 
 Sol menüdeki **"💾 Yedekler"** sayfasından otomatik günlük yedekleri
 indirebilir, **"⬇️ Şimdi yedek al"** ile o anki canlı veritabanını
-(`personal_os.db`, 4 modülün de verisi) tek dosya olarak alabilirsin.
+(`personal_os.db`, tüm modüllerin verisi) tek dosya olarak alabilirsin.
 Her gün ilk ziyarette otomatik bir snapshot alınır, son 14 gün tutulur.
 
 Düzenli olarak (örn. haftada bir), özellikle büyük bir değişiklikten

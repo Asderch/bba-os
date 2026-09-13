@@ -8,22 +8,19 @@ bir Flask dağıtım rehberi değil — sadece bu proje için gerekenler.
 PythonAnywhere Bash konsolunda:
 
 ```bash
-git clone <repo-url> bba-os
+git clone https://github.com/Asderch/bba-os.git bba-os
 ```
-
-(Git kullanmıyorsan Files sekmesinden dosyaları zip olarak yükleyip
-konsoldan `unzip` ile açabilirsin.)
 
 ## 2. Bağımlılıkları kur
 
-Bir virtualenv içinde, `requirements-web.txt` kullan (masaüstü paketi
-`pywebview` yerine MySQL sürücüsü `PyMySQL` içerir):
+`requirements-web.txt` kullan (masaüstü paketi `pywebview` yerine MySQL
+sürücüsü `PyMySQL` içerir). PythonAnywhere'de ayrı bir virtualenv
+KULLANILMIYOR — Web sekmesindeki **Virtualenv** alanı boş bırakılıyor,
+paketler doğrudan kullanıcıya özel olarak kuruluyor:
 
 ```bash
 cd bba-os
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements-web.txt
+pip3.13 install --user -r requirements-web.txt
 ```
 
 ## 3. WSGI dosyasını düzenle
@@ -71,3 +68,19 @@ MySQL'e geçmek istersen:
 Ortam değişkenlerini veya kodu her değiştirdiğinde, Web sekmesindeki
 yeşil **Reload** butonuna basman gerekir — değişiklikler otomatik
 yansımaz.
+
+## 8. Güncelleme (yeni kod yayına almak)
+
+Proje GitHub'a bağlı, kod değişikliklerini yaymak için:
+
+1. Yerelde değişikliği commit'le ve `master` dalına push'la.
+2. PythonAnywhere **Bash konsolunda**:
+   ```bash
+   cd ~/bba-os
+   git pull
+   ```
+3. Yeni bir bağımlılık eklendiyse (`requirements-web.txt` değiştiyse):
+   ```bash
+   pip3.13 install --user -r requirements-web.txt
+   ```
+4. Web sekmesindeki yeşil **Reload** butonuna bas.

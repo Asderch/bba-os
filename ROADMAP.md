@@ -461,14 +461,17 @@ ANCAK ondan sonra başlanacak.
     `LeaveEntry`, `MonthlySalary`, `Habit`, `HabitCompletion`, `AppSetting`.
     Bugün her sorgu **GLOBAL** — tüm kullanıcıların verisi aynı tablolarda
     karışık olacak şekilde tasarlanmış.
-  - Etkilenen dosya sayısı kabaca: 4 blueprint dosyası
-    (`blueprints/is_takip.py` ~302 satır/21 sorgu call-site'ı,
+  - Etkilenen dosya sayısı kabaca: 6 blueprint dosyası
+    (`blueprints/is_takip.py` ~227 satır/18 sorgu call-site'ı,
     `blueprints/aliskanlik.py` ~337 satır/22, `blueprints/butce.py` ~371
-    satır/11, `blueprints/mesai.py` ~364 satır/13) + `app.py` + `models.py`
-    + `settings.py` + `salary.py` (1 sorgu) — toplam **~7-8 çekirdek Python
-    dosyası**.
+    satır/11, `blueprints/mesai.py` ~364 satır/13, `blueprints/analizler.py`
+    ~124 satır/2, `blueprints/notlar.py` ~47 satır/2) + `app.py` +
+    `models.py` + `settings.py` + `salary.py` (1 sorgu) — toplam **~9-10
+    çekirdek Python dosyası**. (Analizler ve Notlar, İş Takip'in içinden
+    ayrı modüllere taşındığı için bir kısım sorgu call-site'ı da onlara
+    geçti — is_takip.py küçüldü, toplam sayı yaklaşık aynı kaldı.)
   - `.query.` / `db.session.query(` / `filter_by(` / `db.session.get(`
-    kalıplarına göre grep'te blueprints genelinde **~67 sorgu call-site'ı**
+    kalıplarına göre grep'te blueprints genelinde **~68 sorgu call-site'ı**
     tespit edildi (+ `salary.py`'de 1 tane daha). Her biri tek tek
     `filter_by(user_id=...)` (ya da eşdeğeri) ile filtrelenmeli — bu satır
     satır kontrol gerektiren, hatası doğrudan **veri sızıntısına** (bir

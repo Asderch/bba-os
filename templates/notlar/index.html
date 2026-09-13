@@ -25,7 +25,8 @@
                 <div style="white-space: pre-wrap;">{{ note.content }}</div>
                 <div class="text-secondary small mt-1">{{ note.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
             </div>
-            <form method="POST" action="{{ url_for('notlar.delete_note', note_id=note.id) }}">
+            <form method="POST" action="{{ url_for('notlar.delete_note', note_id=note.id) }}"
+                  onsubmit="return confirm('Bu not silinecek. Emin misin?');">
                 <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
             </form>
         </div>

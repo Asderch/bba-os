@@ -8,6 +8,8 @@ değerler de cihaza göre farklı çıkar (finans boyutu dahil/hariç). Bu modü
 bu tür ayarları `AppSetting` tablosunda saklar, tüm cihazlarda aynı değeri
 görsün diye.
 """
+from sqlalchemy.exc import IntegrityError
+
 from extensions import db
 from models import AppSetting
 
@@ -27,7 +29,19 @@ def set_gelir_gizli(value):
     if row is None:
         row = AppSetting(key=GELIR_GIZLI_KEY, value="1" if value else "0")
         db.session.add(row)
+        try:
+            db.session.commit()
+            return value
+        except IntegrityError:
+            # İlk kurulumda iki eşzamanlı istek aynı anda satırı INSERT etmeye
+            # çalışırsa (henüz satır yokken) ikincisi burada patlar; satırı
+            # başka biri oluşturmuş demektir — rollback edip UPDATE'e düş.
+            db.session.rollback()
+            row = db.session.get(AppSetting, GELIR_GIZLI_KEY)
+            row.value = "1" if value else "0"
+            db.session.commit()
+            return value
     else:
         row.value = "1" if value else "0"
-    db.session.commit()
-    return value
+        db.session.commit()
+        return value
