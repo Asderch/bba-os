@@ -111,11 +111,15 @@ from blueprints.is_takip import bp as is_takip_bp
 from blueprints.butce import bp as butce_bp
 from blueprints.mesai import bp as mesai_bp
 from blueprints.aliskanlik import bp as aliskanlik_bp
+from blueprints.analizler import bp as analizler_bp
+from blueprints.notlar import bp as notlar_bp
 
 app.register_blueprint(is_takip_bp)
 app.register_blueprint(butce_bp)
 app.register_blueprint(mesai_bp)
 app.register_blueprint(aliskanlik_bp)
+app.register_blueprint(analizler_bp)
+app.register_blueprint(notlar_bp)
 
 
 PARA_MASK = "••••••"

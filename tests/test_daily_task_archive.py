@@ -154,8 +154,9 @@ def test_index_hides_archived_tasks(client, flask_app):
 
 
 def test_stats_denominator_excludes_archived_tasks(client, flask_app):
-    """blueprints/is_takip.py stats(): 'total'/'total_possible' payda'sı
-    sadece active=True görevleri saymalı (aliskanlik.py stats() ile aynı desen).
+    """blueprints/analizler.py _is_takip_weekly() (eskiden is_takip.py stats()):
+    'total'/'total_possible' payda'sı sadece active=True görevleri saymalı
+    (aliskanlik.py stats() ile aynı desen).
     2 görev eklenip biri arşivlenirse, bugünün satırında total=1 görünmeli
     (2 değil) — daha önce DailyTask.query.all() kullanıldığı için 2 çıkıyordu."""
     import app as appmod
@@ -163,7 +164,7 @@ def test_stats_denominator_excludes_archived_tasks(client, flask_app):
         _add_task("Aktif", active=True)
         _add_task("Arşivli", active=False)
 
-    resp = client.get("/is/istatistik")
+    resp = client.get("/analizler/")
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
     # Bugünün satırında "0 / 1" görünmeli (1 aktif görev, hiçbiri tamamlanmadı) —
@@ -197,7 +198,7 @@ def test_stats_keeps_archived_tasks_past_completions_in_weekly_done_count(client
         # Tamamlama kaydı hâlâ duruyor.
         assert DTC.query.filter_by(daily_task_id=task_id, completion_date=today).count() == 1
 
-    resp = client.get("/is/istatistik")
+    resp = client.get("/analizler/")
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
     # Payda artık 0 (aktif görev kalmadı) ama numaratör (total_done) hâlâ 1 —

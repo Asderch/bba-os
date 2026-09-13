@@ -300,6 +300,22 @@ def life_score_history(ctx, days=14, gelir_gizli=False):
     return history
 
 
+def trend_svg_points(history, chart_w=280, chart_h=70):
+    """`life_score_history()` çıktısını (SVG `<polyline>` için) nokta dizgesine
+    çevirir. `home.html` (Life Score hero) ve `analizler` modülü aynı trend
+    grafiğini kullanıyor — hesaplama tek yerde, kod tekrarı yok.
+    Döner: (points_str, last_point) — veri yoksa ("", None)."""
+    n = len(history)
+    pts = []
+    for i, h in enumerate(history):
+        if h["score"] is None:
+            continue
+        x = (i / (n - 1) * chart_w) if n > 1 else 0
+        y = chart_h - (h["score"] / 100 * chart_h)
+        pts.append(f"{x:.1f},{y:.1f}")
+    return " ".join(pts), (pts[-1] if pts else None)
+
+
 def life_score_delta(ctx, gelir_gizli=False):
     """Bugünün Life Score'u ile dünkü arasındaki fark (yüzde puan). Biri eksikse None."""
     today_score = compute_life_score(ctx, for_day=ctx.today, gelir_gizli=gelir_gizli)
@@ -724,17 +740,7 @@ def build_home_context(ctx, now, gelir_gizli):
 
     # --- Trend (SVG) ---
     history = life_score_history(ctx, days=14, gelir_gizli=gelir_gizli)
-    chart_w, chart_h = 280, 70
-    n = len(history)
-    pts = []
-    for i, h in enumerate(history):
-        if h["score"] is None:
-            continue
-        x = (i / (n - 1) * chart_w) if n > 1 else 0
-        y = chart_h - (h["score"] / 100 * chart_h)
-        pts.append(f"{x:.1f},{y:.1f}")
-    trend_points_str = " ".join(pts)
-    trend_last_point = pts[-1] if pts else None
+    trend_points_str, trend_last_point = trend_svg_points(history)
 
     hour = now.hour
     greeting = (

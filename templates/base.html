@@ -41,10 +41,10 @@
                 <a href="{{ url_for('mesai.index') }}" class="bba-nav-link {{ 'active' if module_theme == 'mesai' }}">
                     <span class="bba-nav-icon">{{ icon("clock") }}</span> Mesai
                 </a>
-                <a href="{{ url_for('is_takip.stats') }}" class="bba-nav-link">
+                <a href="{{ url_for('analizler.index') }}" class="bba-nav-link {{ 'active' if module_theme == 'analizler' }}">
                     <span class="bba-nav-icon">{{ icon("chart-line") }}</span> Analizler
                 </a>
-                <a href="{{ url_for('is_takip.notes_list') }}" class="bba-nav-link">
+                <a href="{{ url_for('notlar.index') }}" class="bba-nav-link {{ 'active' if module_theme == 'notlar' }}">
                     <span class="bba-nav-icon">{{ icon("notes") }}</span> Notlar
                 </a>
                 <a href="{{ url_for('backup_history') }}" class="bba-nav-link {{ 'active' if request.endpoint in ('backup_history', 'download_backup') }}">

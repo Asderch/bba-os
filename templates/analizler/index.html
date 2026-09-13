@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Analizler{% endblock %}
+
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("chart-line", 22) }} Analizler</h2>
+</div>
+<div class="bba-page-context">Tüm modüllerin (İş · Alışkanlık · Finans · Mesai) tek bakışta analizi</div>
+
+<!-- ================= LIFE SCORE + BOYUTLAR ================= -->
+<div class="bba-card bba-hero mb-3">
+    <div class="bba-hero-main">
+        <div class="bba-hero-score-block">
+            <div class="bba-label mb-1">LIFE SCORE</div>
+            {% if life_score_low or life_score is none %}
+                <div class="bba-hero-score bba-hero-score-collecting">–</div>
+                <div class="bba-hero-collecting-note">
+                    Skorun birkaç gün veri girince netleşir
+                    {%- if life_score_days %} ({{ life_score_days }}/3 gün){% endif -%}.
+                </div>
+            {% else %}
+                <div class="bba-hero-score">{{ life_score }}<span class="bba-hero-score-max">/100</span></div>
+                {% if life_score_delta is not none and life_score_delta != 0 %}
+                <div class="bba-delta-chip {{ 'up' if life_score_delta > 0 else 'down' }}">
+                    {{ '+' if life_score_delta > 0 }}{{ life_score_delta }} <span>dünden</span>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+        <div class="bba-hero-secondary">
+            <div class="bba-mini-stat">
+                <div class="bba-label">İSTİKRAR</div>
+                <div class="bba-mini-stat-value">
+                    {% if istikrar is not none %}
+                        {{ istikrar.good_days }}<span class="bba-mini-stat-sub">/{{ istikrar.total_days }} gün</span>
+                    {% else %}—{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="bba-dims bba-dims-3">
+        {% for key, label in [('is','İş'), ('aliskanlik','Alışkanlık'), ('finans','Finans')] %}
+        {% set v = breakdown[key] %}
+        <div class="bba-dim {{ 'is-weak' if breakdown.weakest == key and not life_score_low }}">
+            <div class="bba-dim-head">
+                <span class="bba-dim-label">{{ label }}</span>
+                <span class="bba-dim-pct">{{ v ~ '%' if v is not none else '—' }}</span>
+            </div>
+            <div class="bba-dim-track"><div class="bba-dim-fill" style="width: {{ v or 0 }}%;"></div></div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if breakdown.weakest and not life_score_low %}
+    <div class="bba-hero-hint">En büyük fırsat:
+        <b>{{ {'is':'İş Takip','aliskanlik':'Alışkanlıklar','finans':'Finans'}[breakdown.weakest] }}</b>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ================= SON 14 GÜN ================= -->
+<div class="bba-card mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="bba-label">SON 14 GÜN</div>
+        {% if momentum is not none and momentum != 0 %}
+            <span class="bba-delta-chip {{ 'up' if momentum > 0 else 'down' }}">
+                {{ '+' if momentum > 0 }}{{ momentum }}% <span>momentum</span>
+            </span>
+        {% endif %}
+    </div>
+    {% if trend_points_str %}
+    <svg viewBox="0 0 280 70" width="100%" height="70" preserveAspectRatio="none" style="overflow: visible;">
+        <line x1="0" y1="0" x2="280" y2="0" stroke="var(--bba-border)" stroke-width="1"/>
+        <line x1="0" y1="35" x2="280" y2="35" stroke="var(--bba-border)" stroke-width="1"/>
+        <line x1="0" y1="70" x2="280" y2="70" stroke="var(--bba-border)" stroke-width="1"/>
+        <polyline points="{{ trend_points_str }}" fill="none" stroke="var(--bba-chart-line)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        {% if trend_last_point %}
+        <circle cx="{{ trend_last_point.split(',')[0] }}" cy="{{ trend_last_point.split(',')[1] }}" r="4" fill="var(--bba-copper)"/>
+        {% endif %}
+    </svg>
+    {% else %}
+    <div class="bba-empty-inline text-center">Trend için henüz yeterli veri yok.</div>
+    {% endif %}
+</div>
+
+<!-- ================= NELER FARK ETTİ ================= -->
+<div class="bba-card mb-3">
+    <div class="bba-label mb-2">BBA OS NELER FARK ETTİ</div>
+    {% if insights %}
+        {% for insight in insights %}
+        <div class="bba-insight-row">
+            <span class="bba-insight-icon">{{ icon(insight.icon, 16) }}</span>
+            <div>
+                <div class="bba-insight-text">{{ insight.text }}</div>
+                {% if insight.suggestion %}<div class="bba-insight-sub">{{ icon('target', 13) }} {{ insight.suggestion }}</div>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="bba-empty-inline">Veriler oluştukça buraya kişisel içgörüler düşecek.</div>
+    {% endif %}
+</div>
+
+<!-- ================= MODÜL BAZLI ÖZET ================= -->
+<div class="row row-cards mb-3">
+    <div class="col-md-6">
+        <div class="bba-card h-100">
+            <div class="bba-label mb-2">{{ icon('briefcase', 14) }} İŞ TAKİP — BU HAFTA</div>
+            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                <span class="font-mono fs-3">%{{ is_takip.completion_rate }}</span>
+                <span class="text-secondary small">{{ is_takip.total_done }} / {{ is_takip.total_possible }} tamamlandı</span>
+            </div>
+            <a href="{{ url_for('is_takip.index') }}" class="text-secondary small">İş Takip'e git →</a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="bba-card h-100">
+            <div class="bba-label mb-2">{{ icon('flame', 14) }} ALIŞKANLIKLAR — BU HAFTA</div>
+            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                <span class="font-mono fs-3">{{ ('%' ~ aliskanlik.pct) if aliskanlik.pct is not none else '—' }}</span>
+                <span class="text-secondary small">{{ aliskanlik.week_puan }} / {{ aliskanlik.week_max_puan }} puan</span>
+            </div>
+            <a href="{{ url_for('aliskanlik.stats') }}" class="text-secondary small">Alışkanlıklar'a git →</a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="bba-card h-100">
+            <div class="bba-label mb-2">{{ icon('wallet', 14) }} FİNANS — BU AY</div>
+            <div class="d-flex justify-content-between py-1 text-secondary"><span>Gelir</span><span class="font-mono">{{ para_gizle(finans.income) }}</span></div>
+            <div class="d-flex justify-content-between py-1 text-secondary"><span>Gider</span><span class="font-mono">₺{{ '%.2f' | format(finans.expense) }}</span></div>
+            <div class="d-flex justify-content-between py-1 fw-bold"><span>Net</span><span class="font-mono">{{ para_gizle(finans.net) }}</span></div>
+            <a href="{{ url_for('butce.index') }}" class="text-secondary small">Finans'a git →</a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="bba-card h-100">
+            <div class="bba-label mb-2">{{ icon('clock', 14) }} MESAİ — BU AY</div>
+            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                <span class="font-mono fs-3">{{ mesai.hours }} saat</span>
+                <span class="text-secondary small">{{ para_gizle(mesai.amount) }}</span>
+            </div>
+            <a href="{{ url_for('mesai.index') }}" class="text-secondary small">Mesai'ye git →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ================= İŞ TAKİP — GÜNLÜK DÖKÜM ================= -->
+<div class="bba-card">
+    <div class="bba-label mb-2">İŞ TAKİP — GÜNLÜK DÖKÜM (BU HAFTA)</div>
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead><tr><th>Gün</th><th>Tarih</th><th class="text-end">Tamamlanan</th></tr></thead>
+            <tbody>
+                {% for row in is_takip.week_table %}
+                <tr class="{{ 'text-secondary' if row.is_future }}">
+                    <td>{{ row.weekday }}</td>
+                    <td>{{ row.date.strftime('%d.%m.%Y') }}</td>
+                    <td class="text-end">
+                        {% if row.is_future %}—{% else %}{{ row.done }} / {{ row.total }}{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

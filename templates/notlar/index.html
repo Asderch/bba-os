@@ -1,23 +1,23 @@
-{% extends "is_takip/_layout.html" %}
+{% extends "base.html" %}
 {% from "_icons.html" import icon %}
 {% block title %}Notlar{% endblock %}
 
-{% block inner %}
-<h2 class="page-title mt-3 mb-3">Notlar</h2>
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("notes", 22) }} Notlar</h2>
+</div>
 
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="POST" action="{{ url_for('is_takip.add_note') }}">
-            <textarea name="content" class="form-control mb-2" rows="3" placeholder="Hızlıca bir şey not al..." required></textarea>
-            <button type="submit" class="btn btn-primary">Ekle</button>
-        </form>
-    </div>
+<div class="bba-card mb-3">
+    <form method="POST" action="{{ url_for('notlar.add_note') }}">
+        <textarea name="content" class="form-control mb-2" rows="3" placeholder="Hızlıca bir şey not al..." required></textarea>
+        <button type="submit" class="btn btn-primary">Ekle</button>
+    </form>
 </div>
 
 {% if not notes %}
-    <div class="card"><div class="card-body text-center text-secondary">Henüz not almadın.</div></div>
+    <div class="bba-card text-center text-secondary">Henüz not almadın.</div>
 {% else %}
-<div class="card">
+<div class="bba-card">
     <div class="list-group list-group-flush">
         {% for note in notes %}
         <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
@@ -25,7 +25,7 @@
                 <div style="white-space: pre-wrap;">{{ note.content }}</div>
                 <div class="text-secondary small mt-1">{{ note.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
             </div>
-            <form method="POST" action="{{ url_for('is_takip.delete_note', note_id=note.id) }}">
+            <form method="POST" action="{{ url_for('notlar.delete_note', note_id=note.id) }}">
                 <button type="submit" class="btn btn-icon btn-sm text-red" title="Sil">{{ icon('x', 16) }}</button>
             </form>
         </div>

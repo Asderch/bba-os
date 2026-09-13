@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
 from common import TR_MONTHS, TR_WEEKDAYS, today_tr, local_now, safe_redirect_target, valid_hex_color
-from models import DailyTask, DailyTaskCompletion, DeadlineTask, Tag, Note, TAG_COLORS
+from models import DailyTask, DailyTaskCompletion, DeadlineTask, Tag, TAG_COLORS
 
 bp = Blueprint("is_takip", __name__, url_prefix="/is")
 
@@ -225,78 +225,3 @@ def history():
     return render_template("is_takip/gecmis.html", completed_deadlines=completed_deadlines, daily_history=daily_history)
 
 
-# ----------------------------------------------------------------------
-@bp.route("/notlar")
-def notes_list():
-    notes = Note.query.order_by(Note.created_at.desc()).all()
-    return render_template("is_takip/notlar.html", notes=notes)
-
-
-@bp.route("/notlar/add", methods=["POST"])
-def add_note():
-    content = request.form.get("content", "").strip()
-    if not content:
-        flash("Not boş olamaz.")
-        return redirect(url_for("is_takip.notes_list"))
-    db.session.add(Note(content=content))
-    db.session.commit()
-    return redirect(url_for("is_takip.notes_list"))
-
-
-@bp.route("/notlar/<int:note_id>/delete", methods=["POST"])
-def delete_note(note_id):
-    note = Note.query.get_or_404(note_id)
-    db.session.delete(note)
-    db.session.commit()
-    return redirect(url_for("is_takip.notes_list"))
-
-
-# ----------------------------------------------------------------------
-@bp.route("/istatistik")
-def stats():
-    today = today_tr()
-    week_start = today - timedelta(days=today.weekday())
-    week_days = [week_start + timedelta(days=i) for i in range(7)]
-
-    # Habit.stats() ile aynı desen (blueprints/aliskanlik.py): payda sadece
-    # aktif görevleri sayar, arşivlenmiş görevler "güncel görev sayısı"na
-    # dahil edilmez. Ama haftalık tamamlama kayıtları (aşağıdaki
-    # completions_this_week) tarihe göre filtrelenir, görev aktifliğine göre
-    # DEĞİL — bir görev o gün aktifken tamamlanmışsa, sonradan arşivlense
-    # bile o günün "done" sayısına girmeye devam eder (geçmiş bütünlüğü).
-    daily_task_count = DailyTask.query.filter_by(active=True).count()
-
-    completions_this_week = (
-        DailyTaskCompletion.query
-        .filter(DailyTaskCompletion.completion_date >= week_start, DailyTaskCompletion.completion_date <= today)
-        .all()
-    )
-    completions_by_date = {}
-    for c in completions_this_week:
-        completions_by_date.setdefault(c.completion_date, set()).add(c.daily_task_id)
-
-    week_table = []
-    for d in week_days:
-        done_count = len(completions_by_date.get(d, set()))
-        week_table.append({
-            "date": d, "weekday": TR_WEEKDAYS[d.weekday()],
-            "done": done_count, "total": daily_task_count,
-            "is_future": d > today,
-        })
-
-    total_possible = daily_task_count * sum(1 for d in week_days if d <= today)
-    total_done = sum(len(v) for v in completions_by_date.values())
-    completion_rate = round(total_done / total_possible * 100) if total_possible > 0 else 0
-
-    deadline_completed_this_week = (
-        DeadlineTask.query
-        .filter(DeadlineTask.done == True, DeadlineTask.done_at >= datetime.combine(week_start, datetime.min.time()))
-        .count()
-    )
-
-    return render_template(
-        "is_takip/istatistik.html",
-        week_table=week_table, completion_rate=completion_rate,
-        total_done=total_done, total_possible=total_possible,
-        deadline_completed_this_week=deadline_completed_this_week,
-    )

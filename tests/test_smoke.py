@@ -2,9 +2,10 @@
 import pytest
 
 GET_ROUTES = [
-    "/", "/is/", "/is/yonet", "/is/gecmis", "/is/notlar", "/is/istatistik",
+    "/", "/is/", "/is/yonet", "/is/gecmis",
     "/butce/", "/butce/abonelikler", "/mesai/", "/mesai/hesaplama", "/mesai/profil",
     "/aliskanlik/", "/aliskanlik/yonet", "/aliskanlik/istatistik",
+    "/analizler/", "/notlar/",
     "/yedekler", "/yedekle",
     # bozuk ay/yıl argümanları 500'e düşürmemeli
     "/butce/?month=99", "/butce/?month=0", "/butce/?year=abc",
