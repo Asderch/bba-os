@@ -75,7 +75,7 @@ body { background: var(--bba-bg); color: var(--bba-text); font-family: var(--fon
 /* --- Klavye odağı: her yerde görünür bir bakır halka --- */
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
 textarea:focus-visible, [tabindex]:focus-visible,
-.daily-check:focus-visible, .bba-compact-check:focus-visible,
+.daily-check-btn:focus-visible, .bba-compact-check:focus-visible,
 .mini-calendar-day:focus-visible, .bba-priority-check-btn:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
