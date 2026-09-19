@@ -135,7 +135,13 @@ def hesaplama():
 
 @bp.route("/transfer-to-butce", methods=["POST"])
 def transfer_to_butce():
-    """V2: Bu ayın mesai tutarını Bütçe Takip'e gelir olarak aktarır."""
+    """Bu ayın mesai tutarını Bütçe Takip'e gelir olarak aktarır.
+
+    Berkcan'ın maaş düzeni: bir ayda yapılan mesai, ödemesi BİR SONRAKİ AYIN
+    maaşıyla birlikte hesaba yatıyor (ör. Ağustos mesaisi Eylül'de ödeniyor).
+    Bu yüzden kayıt, mesainin YAPILDIĞI ayın değil, parasının GERÇEKTEN
+    yattığı (bir sonraki) ayın son gününe yazılıyor — Bütçe'nin "bu ay ne
+    kadar param var" sorusu gerçek nakit akışını yansıtsın diye."""
     year, month = _valid_month_form()
     if year is None:
         flash("Geçersiz ay/yıl.")
@@ -154,25 +160,30 @@ def transfer_to_butce():
         flash("Bu ay için net maaş girilmemiş ya da aktarılacak mesai tutarı yok.")
         return redirect(url_for("mesai.hesaplama", year=year, month=month))
 
+    (_, _), (pay_year, pay_month) = _prev_next_month(year, month)
+    _, pay_last_day = _month_bounds(pay_year, pay_month)
+
     note = f"{TR_MONTHS[month - 1]} {year} mesai geliri"
+    # Dedup anahtarı MESAİNİN AİT OLDUĞU aya göre (hangi ayın mesaisi
+    # aktarıldı sorusu) — ödeme ayına göre değil, yoksa aynı ödeme ayına
+    # düşen farklı aylık mesailer birbirini "zaten aktarıldı" sanıp engellerdi.
     source = f"mesai:{year:04d}-{month:02d}"
-    # Mükerrer koruması: kaynak etiketine bakıyoruz (kullanıcı Bütçe'de notu
-    # ya da tarihi düzenlese bile guard tutar).
     if Transaction.query.filter_by(source=source).first():
         flash("Bu ayın mesai geliri zaten Bütçe Takip'e aktarılmış (tekrar aktarmak istersen önce Bütçe'den o kaydı sil).")
         return redirect(url_for("mesai.hesaplama", year=year, month=month))
 
-    # Kayıt, gelirin ait olduğu AYA yazılmalı (bugünün tarihine değil) —
-    # yoksa örn. Eylül'de Ağustos mesaisini aktarınca Eylül bütçesine düşerdi.
+    # Kayıt, paranın GERÇEKTEN yattığı aya (bir sonraki ay) yazılıyor —
+    # bkz. fonksiyon docstring'i.
     db.session.add(Transaction(
-        entry_date=last_day, kind="gelir", category="Mesai Geliri",
+        entry_date=pay_last_day, kind="gelir", category="Mesai Geliri",
         amount=calc["mesai_tutari"], note=note, source=source,
     ))
     db.session.commit()
+    pay_month_str = f"{TR_MONTHS[pay_month - 1]} {pay_year}"
     if get_gelir_gizli():
-        flash("Bu ayın mesai geliri Bütçe Takip'e aktarıldı.")
+        flash(f"Mesai geliri Bütçe Takip'e, {pay_month_str} gelirine aktarıldı.")
     else:
-        flash(f"{calc['mesai_tutari']:.2f} ₺ Bütçe Takip'e gelir olarak aktarıldı.")
+        flash(f"{calc['mesai_tutari']:.2f} ₺, {pay_month_str} Bütçe gelirine aktarıldı.")
     return redirect(url_for("mesai.hesaplama", year=year, month=month))
 
 
