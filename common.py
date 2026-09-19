@@ -98,19 +98,6 @@ def safe_positive_float(raw):
     return value
 
 
-def safe_float(raw):
-    """`safe_positive_float` ile aynı ayrıştırma, ama işaret serbest — negatif
-    ve sıfır da geçerli (ör. hesap açılış bakiyesi: bugün -50.000 ile
-    başlıyorsan bu değer negatif olmalı). Geçersiz/inf/nan ise None döner."""
-    try:
-        value = float(str(raw).strip().replace(",", "."))
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(value):
-        return None
-    return value
-
-
 def valid_hex_color(raw, fallback):
     """`#rrggbb` değilse fallback döner (şablonda satır içi style'a giriyor —
     CSS enjeksiyonuna karşı)."""

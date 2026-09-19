@@ -3,7 +3,7 @@ import pytest
 
 GET_ROUTES = [
     "/", "/is/", "/is/yonet", "/is/gecmis",
-    "/butce/", "/butce/abonelikler", "/butce/hesaplar", "/mesai/", "/mesai/hesaplama", "/mesai/profil",
+    "/butce/", "/butce/abonelikler", "/mesai/", "/mesai/hesaplama", "/mesai/profil",
     "/aliskanlik/", "/aliskanlik/yonet", "/aliskanlik/istatistik",
     "/analizler/", "/notlar/",
     "/yedekler", "/yedekle",

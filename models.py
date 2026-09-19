@@ -127,47 +127,6 @@ class Subscription(db.Model):
     category = db.relationship("SubscriptionCategory")
 
 
-ACCOUNT_TYPES = [
-    ("banka", "Banka Hesabı"),
-    ("kredi_karti", "Kredi Kartı"),
-]
-ACCOUNT_TYPE_LABELS = dict(ACCOUNT_TYPES)
-
-
-class Account(db.Model):
-    """Banka hesabı / kredi kartı. Bakiye SAKLANMAZ — işlem bazlı hesaplanır:
-    `opening_balance` (işlem geçmişi başlamadan önceki bakiye, ör. bugün
-    -50.000 ile başlıyorsan bu alana -50000 girilir) + tüm `AccountMovement`
-    kayıtlarının toplamı. Negatif bakiye = borç. Bkz. `accounts_logic.py`."""
-    __tablename__ = "accounts"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False, unique=True)
-    account_type = db.Column(db.String(20), default="banka")  # "banka" | "kredi_karti"
-    opening_balance = db.Column(db.Float, default=0)
-    interest_rate_monthly = db.Column(db.Float)  # aylık faiz oranı (%), opsiyonel — ör. 4.25
-    active = db.Column(db.Boolean, default=True)  # False = arşivlenmiş, geçmiş korunur
-    sort_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=_local_now)
-
-    movements = db.relationship(
-        "AccountMovement", backref="account", lazy=True, cascade="all, delete-orphan",
-    )
-
-
-class AccountMovement(db.Model):
-    """Bir hesaptaki tek hareket — işaretli tutar: pozitif bakiyeyi artırır
-    (ödeme/gelir), negatif azaltır (harcama/borç artışı)."""
-    __tablename__ = "account_movements"
-
-    id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=False, index=True)
-    movement_date = db.Column(db.Date, nullable=False, index=True)
-    amount = db.Column(db.Float, nullable=False)  # işaretli: + bakiyeyi artırır, - azaltır
-    description = db.Column(db.String(200))
-    created_at = db.Column(db.DateTime, default=_local_now)
-
-
 class MonthlyGoal(db.Model):
     """Aylık birikim hedefi (V2: Mesai saat hesaplayıcıyla bağlantılı)."""
     __tablename__ = "monthly_goals"

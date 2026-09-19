@@ -7,7 +7,7 @@ from extensions import db
 from common import (
     TR_MONTHS, TR_WEEKDAYS, today_tr,
     month_bounds as _month_bounds, prev_next_month as _prev_next_month,
-    clamp_year_month, valid_year_month, safe_positive_float, safe_float, safe_redirect_target,
+    clamp_year_month, valid_year_month, safe_positive_float, safe_redirect_target,
     valid_hex_color,
 )
 from salary import hourly_overtime_rate
@@ -16,10 +16,8 @@ from models import (
     Transaction, EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORY_COLORS,
     Subscription, SubscriptionCategory, SUBSCRIPTION_CATEGORY_COLORS,
     MonthlyGoal, MonthlySalary,
-    Account, AccountMovement, ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS,
 )
 from chart_utils import build_donut_segments
-from accounts_logic import account_balance, estimated_interest
 
 bp = Blueprint("butce", __name__, url_prefix="/butce")
 
@@ -371,144 +369,3 @@ def delete_subscription_category(cat_id):
     db.session.delete(cat)
     db.session.commit()
     return redirect(url_for("butce.subscriptions_list"))
-
-
-# ----------------------------------------------------------------------
-# Hesaplar: banka hesabı / kredi kartı bakiye + basit faiz tahmini takibi.
-# Bakiye saklanmaz, her seferinde opening_balance + hareketlerden hesaplanır
-# (bkz. accounts_logic.py) — bu yüzden burada hiç "bakiye güncelle" route'u
-# yok, sadece hareket ekle/sil var.
-@bp.route("/hesaplar")
-def hesaplar():
-    today = today_tr()
-    accounts = Account.query.filter_by(active=True).order_by(Account.sort_order).all()
-    rows = []
-    for acc in accounts:
-        balance = account_balance(acc)
-        rows.append({
-            "account": acc,
-            "balance": balance,
-            "interest": estimated_interest(balance, acc.interest_rate_monthly, today),
-            "movements": (
-                AccountMovement.query.filter_by(account_id=acc.id)
-                .order_by(AccountMovement.movement_date.desc(), AccountMovement.id.desc())
-                .all()
-            ),
-        })
-    archived = Account.query.filter_by(active=False).order_by(Account.name).all()
-    return render_template(
-        "butce/hesaplar.html",
-        rows=rows, archived=archived, account_types=ACCOUNT_TYPES,
-        today=today.isoformat(),
-    )
-
-
-@bp.route("/hesaplar/ekle", methods=["POST"])
-def add_account():
-    name = request.form.get("name", "").strip()
-    account_type = request.form.get("account_type", "").strip()
-    if not name or account_type not in ACCOUNT_TYPE_LABELS:
-        flash("Hesap adı ve türü zorunlu.")
-        return redirect(url_for("butce.hesaplar"))
-    if Account.query.filter_by(name=name).first():
-        flash("Bu isimde bir hesap zaten var.")
-        return redirect(url_for("butce.hesaplar"))
-
-    opening_balance = safe_float(request.form.get("opening_balance", "0")) or 0
-    rate_raw = request.form.get("interest_rate_monthly", "").strip()
-    interest_rate_monthly = safe_positive_float(rate_raw) if rate_raw else None
-
-    max_order = db.session.query(db.func.max(Account.sort_order)).scalar() or 0
-    db.session.add(Account(
-        name=name, account_type=account_type, opening_balance=opening_balance,
-        interest_rate_monthly=interest_rate_monthly, sort_order=max_order + 1,
-    ))
-    db.session.commit()
-    flash(f"'{name}' hesabı eklendi.")
-    return redirect(url_for("butce.hesaplar"))
-
-
-@bp.route("/hesaplar/<int:account_id>/duzenle", methods=["POST"])
-def edit_account(account_id):
-    acc = Account.query.get_or_404(account_id)
-    name = request.form.get("name", "").strip()
-    account_type = request.form.get("account_type", "").strip()
-    if not name or account_type not in ACCOUNT_TYPE_LABELS:
-        flash("Hesap adı ve türü zorunlu.")
-        return redirect(url_for("butce.hesaplar"))
-    if name != acc.name and Account.query.filter_by(name=name).first():
-        flash("Bu isimde bir hesap zaten var.")
-        return redirect(url_for("butce.hesaplar"))
-
-    opening_balance = safe_float(request.form.get("opening_balance", "0"))
-    if opening_balance is None:
-        flash("Açılış bakiyesi geçerli bir sayı olmalı.")
-        return redirect(url_for("butce.hesaplar"))
-    rate_raw = request.form.get("interest_rate_monthly", "").strip()
-    interest_rate_monthly = safe_positive_float(rate_raw) if rate_raw else None
-
-    acc.name = name
-    acc.account_type = account_type
-    acc.opening_balance = opening_balance
-    acc.interest_rate_monthly = interest_rate_monthly
-    db.session.commit()
-    flash(f"'{name}' hesabı güncellendi.")
-    return redirect(url_for("butce.hesaplar"))
-
-
-@bp.route("/hesaplar/<int:account_id>/arsivle", methods=["POST"])
-def archive_account(account_id):
-    acc = Account.query.get_or_404(account_id)
-    acc.active = False
-    db.session.commit()
-    flash(f"'{acc.name}' arşivlendi — geçmiş hareketleri korunuyor, istediğinde geri aktifleştirebilirsin.")
-    return redirect(url_for("butce.hesaplar"))
-
-
-@bp.route("/hesaplar/<int:account_id>/geri-getir", methods=["POST"])
-def unarchive_account(account_id):
-    acc = Account.query.get_or_404(account_id)
-    acc.active = True
-    db.session.commit()
-    flash(f"'{acc.name}' tekrar aktif.")
-    return redirect(url_for("butce.hesaplar"))
-
-
-@bp.route("/hesaplar/<int:account_id>/hareket/ekle", methods=["POST"])
-def add_account_movement(account_id):
-    acc = Account.query.get_or_404(account_id)
-    entry_date_str = request.form.get("movement_date", "").strip()
-    direction = request.form.get("direction", "").strip()  # "artir" | "azalt"
-    description = request.form.get("description", "").strip()
-
-    if not entry_date_str or direction not in ("artir", "azalt"):
-        flash("Tarih ve yön zorunlu.")
-        return redirect(url_for("butce.hesaplar"))
-    try:
-        movement_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
-    except ValueError:
-        flash("Tarih formatı geçersiz.")
-        return redirect(url_for("butce.hesaplar"))
-
-    magnitude = safe_positive_float(request.form.get("amount", ""))
-    if magnitude is None:
-        flash("Tutar geçerli ve 0'dan büyük olmalı.")
-        return redirect(url_for("butce.hesaplar"))
-
-    amount = magnitude if direction == "artir" else -magnitude
-    db.session.add(AccountMovement(
-        account_id=acc.id, movement_date=movement_date, amount=amount,
-        description=description or None,
-    ))
-    db.session.commit()
-    flash("Hareket eklendi.")
-    return redirect(url_for("butce.hesaplar"))
-
-
-@bp.route("/hesaplar/hareket/<int:movement_id>/sil", methods=["POST"])
-def delete_account_movement(movement_id):
-    movement = AccountMovement.query.get_or_404(movement_id)
-    db.session.delete(movement)
-    db.session.commit()
-    flash("Hareket silindi.")
-    return redirect(url_for("butce.hesaplar"))

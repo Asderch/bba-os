@@ -6,7 +6,6 @@
     <div class="bba-subnav">
         <a href="{{ url_for('butce.index') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'butce.index' }}">Hareketler</a>
         <a href="{{ url_for('butce.subscriptions_list') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'butce.subscriptions_list' }}">Abonelikler</a>
-        <a href="{{ url_for('butce.hesaplar') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'butce.hesaplar' }}">Hesaplar</a>
     </div>
 </div>
 {% block page_context %}{% endblock %}
