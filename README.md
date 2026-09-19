@@ -32,7 +32,8 @@ python desktop.py             # masaüstü pencere
 - **İş Takip** (`/is`) — günlük işler (checkbox), terminli işler (tarih
   bazlı, aciliyet renkli), etiketler, geçmiş
 - **Bütçe Takip** (`/butce`) — gelir/gider takibi, kategori dağılım
-  grafiği, gelir gizleme, abonelik takibi (otomatik gider kaydı ile)
+  grafiği, gelir gizleme, abonelik takibi (otomatik gider kaydı ile),
+  hesap/kredi kartı bakiye takibi + basit faiz tahmini (Hesaplar sekmesi)
 - **Mesai Takip** (`/mesai`) — fazla mesai kaydı, maaş hesaplama
   (Excel formülüne dayalı)
 - **Alışkanlık Takip** (`/aliskanlik`) — hedef koymadan işaretleme,
