@@ -70,9 +70,9 @@
             {% else %}
             <div class="list-group list-group-flush">
                 {% for row in deadline_rows %}
-                <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
+                        <span class="badge flex-shrink-0 {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
                             {% if row.urgency == 'gecikmis' %}{{ -row.days_left }} gün gecikti
                             {% elif row.days_left == 0 %}Bugün
                             {% else %}{{ row.days_left }} gün kaldı{% endif %}

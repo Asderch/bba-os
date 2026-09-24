@@ -86,9 +86,9 @@
             {% if deadline_rows %}
             <div class="list-group list-group-flush">
                 {% for row in deadline_rows %}
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
+                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge flex-shrink-0 {{ 'bg-red-lt text-red' if row.urgency == 'gecikmis' else ('bg-yellow-lt text-yellow' if row.urgency == 'yaklasan' else 'bg-secondary-lt') }}">
                             {{ row.task.due_date.strftime('%d.%m.%Y') }}
                         </span>
                         <span class="fw-medium">{{ row.task.title }}</span>
