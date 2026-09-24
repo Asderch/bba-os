@@ -57,6 +57,23 @@ class DailyTaskCompletion(db.Model):
     )
 
 
+class NonWorkDay(db.Model):
+    """'Bugün çalışmıyorum' olarak işaretlenmiş bir gün — Berkcan'ın hafta
+    sonu çalışması düzensiz (bazı Cumartesi/Pazar çalışıyor, bazı çalışmıyor),
+    ve "Günlük İşlerim" listesi tamamen işyerine özgü görevlerden oluşuyor.
+    Bu günlerde günlük iş görevleri Life Score'un İş boyutundan TAMAMEN hariç
+    tutulur (0/total olarak cezalandırılmaz — activity_start öncesi günlerle
+    aynı "hiç veri yok" mantığı, bkz. dashboard_logic.DashboardContext).
+    Geriye dönük değil, ileriye dönük de işaretlenebilir (ör. bu hafta sonu
+    için önceden)."""
+    __tablename__ = "non_work_days"
+
+    id = db.Column(db.Integer, primary_key=True)
+    work_date = db.Column(db.Date, nullable=False, unique=True, index=True)
+    note = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=_local_now)
+
+
 class DeadlineTask(db.Model):
     """Termin (bitiş) tarihi olan, tek seferlik işler."""
     __tablename__ = "deadline_tasks"

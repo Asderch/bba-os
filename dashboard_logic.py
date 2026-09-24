@@ -15,7 +15,7 @@ from extensions import db
 from common import TR_MONTHS, TR_WEEKDAYS, month_bounds
 from salary import calculate_salary
 from models import (
-    DailyTask, DailyTaskCompletion, DeadlineTask,
+    DailyTask, DailyTaskCompletion, DeadlineTask, NonWorkDay,
     Habit, HabitCompletion, OvertimeEntry, LeaveEntry, Transaction, MonthlyGoal, Subscription,
 )
 
@@ -43,6 +43,15 @@ class DashboardContext:
         # önce başlayan biri için İstikrar/Momentum/içgörüler, geçmişi zorla
         # sıfırla doldurup yanıltıcı (ve cesaret kırıcı) çıkıyordu.
         self.activity_start = self._compute_activity_start(today)
+
+        # "Bugün çalışmıyorum" olarak işaretlenmiş günler — Günlük İşlerim
+        # listesi tamamen işyerine özgü olduğu için, bu günlerde İş boyutu
+        # Life Score'dan tamamen hariç tutulur (bkz. daily_is_pct).
+        self.non_work_days = {
+            row.work_date for row in NonWorkDay.query.filter(
+                NonWorkDay.work_date >= self.window_start, NonWorkDay.work_date <= today,
+            ).all()
+        }
 
         self.total_daily_tasks = DailyTask.query.filter_by(active=True).count()
         daily_task_ids = {t.id for t in DailyTask.query.filter_by(active=True).all()}
@@ -114,6 +123,10 @@ class DashboardContext:
         return min(dates) if dates else today
 
     def daily_is_pct(self, day):
+        # "Çalışmıyorum" işaretli gün: veri yokmuş gibi davran (0% değil) —
+        # Günlük İşlerim tamamen işyerine özgü, o gün hiçbiri yapılamaz.
+        if day in self.non_work_days:
+            return None
         if day < self.activity_start or self.total_daily_tasks == 0:
             return None
         done = len(self.daily_done_by_date.get(day, set()))
@@ -424,8 +437,13 @@ def dashboard_priorities(ctx, limit=3):
     todays_done_ids = ctx.daily_done_by_date.get(ctx.today, set())
     # active=True: arşivlenmiş görevler ne öncelik listesinde görünsün ne de
     # done_today/total_today sayaçlarına girsin (ctx.total_daily_tasks'la
-    # tutarlı — ikisi de aynı "aktif görev" tanımını kullanmalı).
-    daily_tasks = DailyTask.query.filter_by(active=True).order_by(DailyTask.sort_order).all()
+    # tutarlı — ikisi de aynı "aktif görev" tanımını kullanmalı). Bugün
+    # "çalışmıyorum" işaretliyse günlük işler tamamen listeden düşer (hepsi
+    # işyerine özgü, yapılamaz) — "0/4 günlük iş bitti" diye nagleme olmasın.
+    daily_tasks = (
+        [] if ctx.today in ctx.non_work_days
+        else DailyTask.query.filter_by(active=True).order_by(DailyTask.sort_order).all()
+    )
     if len(priorities) < limit:
         undone = [t for t in daily_tasks if t.id not in todays_done_ids]
         for t in undone[: limit - len(priorities)]:
@@ -722,6 +740,7 @@ def build_home_context(ctx, now, gelir_gizli):
     # --- Bugün şeridi ---
     is_daily_count = ctx.total_daily_tasks
     is_daily_done_today = len(ctx.daily_done_by_date.get(today, set()))
+    is_non_work_today = today in ctx.non_work_days
     aliskanlik_total = len(ctx.habits)
     aliskanlik_done = len(ctx.habit_done_by_date.get(today, set()))
 
@@ -771,6 +790,7 @@ def build_home_context(ctx, now, gelir_gizli):
 
         "is_daily_count": is_daily_count,
         "is_daily_done_today": is_daily_done_today,
+        "is_non_work_today": is_non_work_today,
         "is_urgent_count": is_urgent_count,
         "aliskanlik_total": aliskanlik_total,
         "aliskanlik_done": aliskanlik_done,

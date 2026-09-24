@@ -127,7 +127,8 @@
                 <div class="bba-today-col">
                     <div class="text-secondary small mb-1">İş</div>
                     <div class="bba-today-number">{{ is_daily_done_today }}<span class="bba-today-sep">/{{ is_daily_count }}</span></div>
-                    {% if is_urgent_count %}<div class="bba-today-flag">{{ is_urgent_count }} acil termin</div>{% endif %}
+                    {% if is_non_work_today %}<div class="bba-today-flag">izin günü</div>
+                    {% elif is_urgent_count %}<div class="bba-today-flag">{{ is_urgent_count }} acil termin</div>{% endif %}
                 </div>
                 <div class="bba-today-col">
                     <div class="text-secondary small mb-1">Alışkanlık</div>

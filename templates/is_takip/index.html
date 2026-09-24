@@ -2,23 +2,37 @@
 {% block title %}Bugün{% endblock %}
 
 {% block inner %}
-<div class="page-header mt-3 mb-3">
-    <h2 class="page-title">{{ weekday_name }}, {{ today.strftime('%d.%m.%Y') }}</h2>
-    <p class="text-secondary mb-0">
-        Günlük işlerinden {{ daily_done_count }} / {{ daily_rows|length }} tanesini bugün tamamladın.
-        {% if deadline_rows %}
-            {% set acil_count = deadline_rows | selectattr('urgency', 'in', ['gecikmis', 'yaklasan']) | list | length %}
-            {% if acil_count > 0 %}Dikkat: {{ acil_count }} terminli iş yaklaşıyor ya da gecikti.{% else %}Yaklaşan bir termin yok.{% endif %}
-        {% else %}
-            Termini olan bir iş kaydedilmemiş.
-        {% endif %}
-    </p>
+<div class="page-header mt-3 mb-3 d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+        <h2 class="page-title">{{ weekday_name }}, {{ today.strftime('%d.%m.%Y') }}</h2>
+        <p class="text-secondary mb-0">
+            {% if is_non_work_today %}
+                Bugün "çalışmıyorum" olarak işaretli — günlük işler bugün için Life Score'u etkilemiyor.
+            {% else %}
+                Günlük işlerinden {{ daily_done_count }} / {{ daily_rows|length }} tanesini bugün tamamladın.
+            {% endif %}
+            {% if deadline_rows %}
+                {% set acil_count = deadline_rows | selectattr('urgency', 'in', ['gecikmis', 'yaklasan']) | list | length %}
+                {% if acil_count > 0 %}Dikkat: {{ acil_count }} terminli iş yaklaşıyor ya da gecikti.{% else %}Yaklaşan bir termin yok.{% endif %}
+            {% else %}
+                Termini olan bir iş kaydedilmemiş.
+            {% endif %}
+        </p>
+    </div>
+    <form method="POST" action="{{ url_for('is_takip.toggle_non_work_today') }}">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+            {{ 'Bugün normal çalışma günü' if is_non_work_today else 'Bugün çalışmıyorum' }}
+        </button>
+    </form>
 </div>
 
 <div class="row row-cards">
     <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header"><h3 class="card-title">Günlük İşlerim</h3></div>
+            {% if is_non_work_today %}
+                <div class="alert alert-secondary mx-3 mt-3 mb-0">Bugün çalışmıyorsun — bu görevler Life Score'a dahil edilmiyor, istersen yine de işaretleyebilirsin.</div>
+            {% endif %}
             {% if not daily_rows %}
                 <div class="card-body text-center text-secondary">
                     Henüz günlük işin yok. <a href="{{ url_for('is_takip.manage_tasks') }}">İşleri Yönet'ten ekleyebilirsin.</a>

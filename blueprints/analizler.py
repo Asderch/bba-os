@@ -36,11 +36,13 @@ def _week_bounds(today):
     return week_start, week_start + timedelta(days=6)
 
 
-def _is_takip_weekly(today, week_start, week_days):
+def _is_takip_weekly(today, week_start, week_days, non_work_days):
     """`blueprints/is_takip.py`'nin eski `stats()` route'undan taşındı —
     aynı desen: payda sadece aktif görevleri sayar (arşivlenmiş görevler
     hariç), ama günlük tamamlama kayıtları tarihe göre filtrelenir, görev
-    aktifliğine göre DEĞİL (geçmiş bütünlüğü korunur)."""
+    aktifliğine göre DEĞİL (geçmiş bütünlüğü korunur). "Çalışmıyorum"
+    işaretli günler de paydadan hariç (`is_off` — Life Score'daki
+    `daily_is_pct` ile aynı mantık, bkz. dashboard_logic.py)."""
     daily_task_count = DailyTask.query.filter_by(active=True).count()
     completions = (
         DailyTaskCompletion.query
@@ -53,15 +55,16 @@ def _is_takip_weekly(today, week_start, week_days):
 
     week_table = []
     for d in week_days:
+        is_off = d in non_work_days
         done_count = len(completions_by_date.get(d, set()))
         week_table.append({
             "date": d, "weekday": TR_WEEKDAYS[d.weekday()],
-            "done": done_count, "total": daily_task_count,
-            "is_future": d > today,
+            "done": done_count, "total": 0 if is_off else daily_task_count,
+            "is_future": d > today, "is_off": is_off,
         })
 
-    total_possible = daily_task_count * sum(1 for d in week_days if d <= today)
-    total_done = sum(len(v) for v in completions_by_date.values())
+    total_possible = daily_task_count * sum(1 for d in week_days if d <= today and d not in non_work_days)
+    total_done = sum(len(v) for d, v in completions_by_date.items() if d not in non_work_days)
     completion_rate = round(total_done / total_possible * 100) if total_possible > 0 else 0
     return {
         "week_table": week_table, "completion_rate": completion_rate,
@@ -117,7 +120,7 @@ def index():
         momentum=dash.compute_momentum(ctx), istikrar=dash.compute_istikrar(ctx),
         insights=dash.get_insights(ctx),
         trend_points_str=trend_points_str, trend_last_point=trend_last_point,
-        is_takip=_is_takip_weekly(today, week_start, week_days),
+        is_takip=_is_takip_weekly(today, week_start, week_days, ctx.non_work_days),
         aliskanlik=_aliskanlik_weekly(week_start, week_end),
         finans={"income": ctx.month_income, "expense": ctx.month_expense, "net": ctx.month_net},
         mesai={"hours": ctx.month_overtime_hours, "amount": mesai_calc.get("mesai_tutari")},

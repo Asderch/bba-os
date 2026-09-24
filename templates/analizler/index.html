@@ -152,11 +152,11 @@
             <thead><tr><th>Gün</th><th>Tarih</th><th class="text-end">Tamamlanan</th></tr></thead>
             <tbody>
                 {% for row in is_takip.week_table %}
-                <tr class="{{ 'text-secondary' if row.is_future }}">
+                <tr class="{{ 'text-secondary' if (row.is_future or row.is_off) }}">
                     <td>{{ row.weekday }}</td>
                     <td>{{ row.date.strftime('%d.%m.%Y') }}</td>
                     <td class="text-end">
-                        {% if row.is_future %}—{% else %}{{ row.done }} / {{ row.total }}{% endif %}
+                        {% if row.is_off %}izin günü{% elif row.is_future %}—{% else %}{{ row.done }} / {{ row.total }}{% endif %}
                     </td>
                 </tr>
                 {% endfor %}

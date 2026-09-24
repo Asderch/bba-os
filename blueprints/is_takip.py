@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
 from common import TR_MONTHS, TR_WEEKDAYS, today_tr, local_now, safe_redirect_target, valid_hex_color
-from models import DailyTask, DailyTaskCompletion, DeadlineTask, Tag, TAG_COLORS
+from models import DailyTask, DailyTaskCompletion, DeadlineTask, NonWorkDay, Tag, TAG_COLORS
 
 bp = Blueprint("is_takip", __name__, url_prefix="/is")
 
@@ -51,6 +51,7 @@ def _get_tag_id():
 @bp.route("/")
 def index():
     today = today_tr()
+    is_non_work_today = NonWorkDay.query.filter_by(work_date=today).first() is not None
 
     daily_tasks = DailyTask.query.filter_by(active=True).order_by(DailyTask.sort_order).all()
     todays_completions = {
@@ -70,8 +71,25 @@ def index():
         "is_takip/index.html",
         today=today, weekday_name=TR_WEEKDAYS[today.weekday()],
         daily_rows=daily_rows, daily_done_count=daily_done_count,
-        deadline_rows=deadline_rows,
+        deadline_rows=deadline_rows, is_non_work_today=is_non_work_today,
     )
+
+
+@bp.route("/gun/bugun-calismiyorum", methods=["POST"])
+def toggle_non_work_today():
+    """'Bugün çalışmıyorum' — Günlük İşlerim tamamen işyerine özgü olduğu
+    için, bu gün Life Score'un İş boyutundan tamamen hariç tutulur (bkz.
+    dashboard_logic.DashboardContext.non_work_days)."""
+    today = today_tr()
+    existing = NonWorkDay.query.filter_by(work_date=today).first()
+    if existing:
+        db.session.delete(existing)
+        flash("Bugün tekrar normal bir çalışma günü olarak işaretlendi.")
+    else:
+        db.session.add(NonWorkDay(work_date=today))
+        flash("Bugün 'çalışmıyorum' olarak işaretlendi — günlük işler bugün için Life Score'u etkilemeyecek.")
+    db.session.commit()
+    return redirect(safe_redirect_target(request.referrer, request.host) or url_for("is_takip.index"))
 
 
 @bp.route("/daily/<int:task_id>/toggle", methods=["POST"])
@@ -114,10 +132,45 @@ def manage_tasks():
     deadline_tasks = DeadlineTask.query.filter_by(done=False).order_by(DeadlineTask.due_date.asc()).all()
     deadline_rows = [{"task": t, "urgency": _urgency(t.due_date, today)} for t in deadline_tasks]
     tags = Tag.query.order_by(Tag.name).all()
+    # Geçmişi de göster (silinmiş bir gün kayıtta kalmaz) ama en yakın/gelecek
+    # olanlar üstte olsun — planlama için asıl önemli olan bunlar.
+    non_work_days = NonWorkDay.query.order_by(NonWorkDay.work_date.desc()).all()
     return render_template(
         "is_takip/yonet.html", daily_tasks=daily_tasks, archived=archived, deadline_rows=deadline_rows,
-        today=today.isoformat(), tags=tags, tag_colors=TAG_COLORS,
+        today=today.isoformat(), tags=tags, tag_colors=TAG_COLORS, non_work_days=non_work_days,
     )
+
+
+@bp.route("/gun/ekle", methods=["POST"])
+def add_non_work_day():
+    date_str = request.form.get("work_date", "").strip()
+    note = request.form.get("note", "").strip()
+    if not date_str:
+        flash("Tarih zorunlu.")
+        return redirect(url_for("is_takip.manage_tasks"))
+    try:
+        work_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        flash("Tarih formatı geçersiz.")
+        return redirect(url_for("is_takip.manage_tasks"))
+
+    if NonWorkDay.query.filter_by(work_date=work_date).first():
+        flash(f"{work_date.strftime('%d.%m.%Y')} zaten çalışılmayan gün olarak işaretli.")
+        return redirect(url_for("is_takip.manage_tasks"))
+
+    db.session.add(NonWorkDay(work_date=work_date, note=note or None))
+    db.session.commit()
+    flash(f"{work_date.strftime('%d.%m.%Y')} çalışılmayan gün olarak işaretlendi.")
+    return redirect(url_for("is_takip.manage_tasks"))
+
+
+@bp.route("/gun/<int:non_work_day_id>/sil", methods=["POST"])
+def delete_non_work_day(non_work_day_id):
+    row = NonWorkDay.query.get_or_404(non_work_day_id)
+    db.session.delete(row)
+    db.session.commit()
+    flash(f"{row.work_date.strftime('%d.%m.%Y')} tekrar normal bir çalışma günü.")
+    return redirect(url_for("is_takip.manage_tasks"))
 
 
 @bp.route("/tags/add", methods=["POST"])
