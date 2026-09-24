@@ -37,11 +37,6 @@
     <div class="list-group list-group-flush">
         {% for row in rows %}
         <div class="list-group-item d-flex align-items-center gap-3 {{ 'bg-body-tertiary' if row.done }}">
-            <form method="POST" action="{{ url_for('aliskanlik.toggle_habit', habit_id=row.habit.id) }}">
-                <button type="submit" class="daily-check-btn" aria-label="{{ row.habit.name }} tamamlandı olarak işaretle">
-                    <span class="daily-check {{ 'daily-check-done' if row.done }}">{{ '✓' if row.done }}</span>
-                </button>
-            </form>
             <div class="flex-fill">
                 <a href="{{ url_for('aliskanlik.habit_detail', habit_id=row.habit.id) }}" class="text-reset" style="text-decoration: none;">
                     <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
@@ -57,6 +52,11 @@
                     Bu hafta {{ row.week_count }}/{{ row.week_target }}
                 </span>
             </div>
+            <form method="POST" action="{{ url_for('aliskanlik.toggle_habit', habit_id=row.habit.id) }}">
+                <button type="submit" class="daily-check-btn" aria-label="{{ row.habit.name }} tamamlandı olarak işaretle">
+                    <span class="daily-check {{ 'daily-check-done' if row.done }}">{{ '✓' if row.done }}</span>
+                </button>
+            </form>
         </div>
         {% endfor %}
     </div>

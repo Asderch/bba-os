@@ -20,20 +20,19 @@
 /* Modül içi sayfa başlığı (theme-slash .page-title'ı da biçimliyor; burada
    yalnızca alt/üst boşluk uyumu için bir şey yok — başlık rengi/fontu temada). */
 
-/* Checkbox (günlük iş / alışkanlık) — görsel kutu küçük (22px, ana ekrandaki
-   "Günün Öncelikleri" ile aynı `.bba-compact-check` deseni), ama dokunma
-   hedefi `.daily-check-btn`'in padding+negatif margin hilesiyle 44px'te
-   kalıyor (görünmez ama tıklanabilir alan büyük, kutu küçük). */
-.daily-check-btn { background: none; border: none; padding: 11px; margin: -11px; cursor: pointer; flex-shrink: 0; display: inline-flex; }
+/* Checkbox (günlük iş / alışkanlık) — satırın sağında, dolu nokta (yapılmadı)
+   / yeşil halka+✓ (yapıldı) şeklinde. Kutu 30px, dokunma hedefi
+   `.daily-check-btn`'in padding+negatif margin hilesiyle 44px'te kalıyor. */
+.daily-check-btn { background: none; border: none; padding: 7px; margin: -7px; cursor: pointer; flex-shrink: 0; display: inline-flex; }
 .daily-check {
-    width: 22px; height: 22px; border-radius: var(--radius-pill); border: 1px solid var(--bba-border-secondary);
-    background: transparent; color: var(--bba-bg); font-size: 0.72rem; font-weight: 800;
+    width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent;
+    background: var(--bba-border-secondary); color: transparent; font-size: 0.85rem; font-weight: 800;
     display: inline-flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: background 0.12s, border-color 0.12s;
+    flex-shrink: 0; transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.daily-check-btn:hover .daily-check { border-color: var(--bba-white); }
-/* İşaretli kutu: beyaz dolgu + zeminle aynı koyu ✓ (görünür olsun). */
-.daily-check-done { background: var(--bba-white); color: var(--bba-bg); border-color: var(--bba-white); }
+.daily-check-btn:hover .daily-check { border-color: var(--bba-text-muted); }
+/* İşaretli: yeşil halka + ✓ (dolgu şeffaf, ring vurgusu). */
+.daily-check-done { background: transparent; border-color: var(--bba-positive); color: var(--bba-positive); }
 
 /* Renk seçici (etiket/kategori) — bkz. templates/_color_picker.html */
 .bba-color-picker { display: flex; flex-wrap: wrap; gap: 8px; }
