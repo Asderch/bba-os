@@ -1,5 +1,6 @@
 {% extends "is_takip/_layout.html" %}
 {% from "_icons.html" import icon %}
+{% from "_color_picker.html" import color_picker %}
 {% block title %}İşleri Yönet{% endblock %}
 
 {% block inner %}
@@ -107,20 +108,18 @@
 <div class="card">
     <div class="card-header"><h3 class="card-title">Etiketler</h3></div>
     <div class="card-body">
-        <form method="POST" action="{{ url_for('is_takip.add_tag') }}" class="row g-2">
-            <div class="col-md-6">
-                <input type="text" name="name" class="form-control" placeholder="Etiket adı (örn. Stok, Sipariş)" required>
+        <form method="POST" action="{{ url_for('is_takip.add_tag') }}">
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-md-8">
+                    <label class="form-label">Etiket adı</label>
+                    <input type="text" name="name" class="form-control" placeholder="örn. Stok, Sipariş" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Ekle</button>
+                </div>
             </div>
-            <div class="col-md-4">
-                <select name="color" class="form-select">
-                    {% for color in tag_colors %}
-                        <option value="{{ color }}" style="background: {{ color }}; color: #fff;">{{ color }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Ekle</button>
-            </div>
+            <label class="form-label">Renk</label>
+            {{ color_picker('color', tag_colors, 'tag') }}
         </form>
     </div>
     {% if tags %}

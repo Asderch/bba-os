@@ -1,0 +1,18 @@
+{# Tıklanabilir renk daireleri + gerçek etiket görünümünü taklit eden canlı
+   önizleme (badge, %22 opaklık zemin + tam renk metin — is_takip/index.html
+   vb. yerlerde etiketlerin GERÇEKTEN render edildiği stille birebir aynı).
+   Düz <select><option style="background:..."> yerine bunu kullanıyoruz —
+   tarayıcılar (özellikle mobil) <option>'ların satır içi stilini çoğunlukla
+   yok sayıyor, renkler sadece hex kod yazısı olarak görünüyordu. #}
+{% macro color_picker(field_name, colors, uid, sample_text='Örnek Etiket', default=None) %}
+{% set default = default or colors[0] %}
+<div class="bba-color-picker">
+    {% for color in colors %}
+    <label class="bba-color-swatch {{ 'selected' if color == default }}" style="background: {{ color }};" title="{{ color }}">
+        <input type="radio" name="{{ field_name }}" value="{{ color }}" {{ 'checked' if color == default }}
+               onchange="bbaColorPick(this, 'preview-{{ uid }}')">
+    </label>
+    {% endfor %}
+</div>
+<span id="preview-{{ uid }}" class="badge mt-2" style="background: {{ default }}22; color: {{ default }};">{{ sample_text }}</span>
+{% endmacro %}

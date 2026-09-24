@@ -1,5 +1,6 @@
 {% extends "butce/_layout.html" %}
 {% from "_icons.html" import icon %}
+{% from "_color_picker.html" import color_picker %}
 {% block title %}Abonelikler{% endblock %}
 
 {% block inner %}
@@ -115,18 +116,18 @@
 <div class="card">
     <div class="card-header"><h3 class="card-title">Kategoriler</h3></div>
     <div class="card-body">
-        <form method="POST" action="{{ url_for('butce.add_subscription_category') }}" class="row g-2">
-            <div class="col-md-6">
-                <input type="text" name="name" class="form-control" placeholder="Kategori adı (örn. Bulut, Yayın)" required>
+        <form method="POST" action="{{ url_for('butce.add_subscription_category') }}">
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-md-8">
+                    <label class="form-label">Kategori adı</label>
+                    <input type="text" name="name" class="form-control" placeholder="örn. Bulut, Yayın" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Ekle</button>
+                </div>
             </div>
-            <div class="col-md-4">
-                <select name="color" class="form-select">
-                    {% for color in sub_colors %}<option value="{{ color }}">{{ color }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Ekle</button>
-            </div>
+            <label class="form-label">Renk</label>
+            {{ color_picker('color', sub_colors, 'sub', sample_text='Örnek Kategori') }}
         </form>
     </div>
     {% if categories %}

@@ -3,10 +3,20 @@ from common import local_now as _local_now
 from common import TR_WEEKDAYS as WEEKDAYS
 
 
+# Etiket/kategori renk paleti — Tag ve SubscriptionCategory arasında paylaşılan
+# TEK kaynak (Tailwind'in 500 tonları, karanlık zeminde badge metni olarak
+# okunaklı olacak şekilde seçildi). Berkcan'ın isteğiyle 7'den ~19'a çıkarıldı.
+PALETTE_COLORS = [
+    "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981",
+    "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
+    "#d946ef", "#ec4899", "#f43f5e", "#64748b", "#78716c",
+]
+
+
 # ============================================================
 # İŞ TAKİP
 # ============================================================
-TAG_COLORS = ["#a855f7", "#06b6d4", "#22c55e", "#f97316", "#eab308", "#ec4899", "#64748b"]
+TAG_COLORS = PALETTE_COLORS
 
 
 class Tag(db.Model):
@@ -84,7 +94,7 @@ CATEGORY_COLORS = {
     "Giyim": "#8e5ee0", "Abonelik": "#06b6d4", "Diğer Gider": "#8a8f98",
 }
 
-SUBSCRIPTION_CATEGORY_COLORS = ["#06b6d4", "#8b5cf6", "#22c55e", "#f97316", "#eab308", "#ec4899", "#64748b"]
+SUBSCRIPTION_CATEGORY_COLORS = PALETTE_COLORS
 
 
 class Transaction(db.Model):

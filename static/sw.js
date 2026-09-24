@@ -5,6 +5,7 @@ const STATIC_ASSETS = [
     "/static/css/custom.css",
     "/static/css/theme-slash.css",
     "/static/js/datepicker.js",
+    "/static/js/color-picker.js",
     "/static/fonts/JetBrainsMono-Regular.woff2",
     "/static/fonts/JetBrainsMono-Bold.woff2",
     "/static/icons/app-192.png",

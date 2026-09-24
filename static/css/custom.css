@@ -35,6 +35,15 @@
 /* İşaretli kutu: beyaz dolgu + zeminle aynı koyu ✓ (görünür olsun). */
 .daily-check-done { background: var(--bba-white); color: var(--bba-bg); border-color: var(--bba-white); }
 
+/* Renk seçici (etiket/kategori) — bkz. templates/_color_picker.html */
+.bba-color-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.bba-color-swatch {
+    position: relative; width: 28px; height: 28px; border-radius: 50%;
+    cursor: pointer; display: inline-block; border: 2px solid transparent;
+}
+.bba-color-swatch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.bba-color-swatch.selected { border-color: var(--bba-white); box-shadow: 0 0 0 2px var(--bba-bg), 0 0 0 4px var(--bba-white); }
+
 /* Segment kontrolü (Gelir/Gider) */
 .kind-toggle .btn-check:checked + .btn-kind-gelir { background: var(--bba-positive-dim); border-color: var(--bba-positive); color: var(--bba-positive); }
 .kind-toggle .btn-check:checked + .btn-kind-gider { background: var(--bba-negative-dim); border-color: var(--bba-negative); color: var(--bba-negative); }
