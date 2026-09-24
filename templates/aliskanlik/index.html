@@ -8,21 +8,21 @@
 <div class="page-header mt-3 mb-3">
     <div class="row align-items-center">
         <div class="col">
+            <div class="bba-label mb-1">BUGÜN</div>
             <p class="text-secondary mb-0">
-                {% if rows %}Bugün {{ done_count }} / {{ rows|length }} alışkanlığını tamamladın.{% else %}Henüz alışkanlık eklemedin.{% endif %}
+                {% if rows %}{{ done_count }} / {{ rows|length }} alışkanlık tamamlandı{% else %}Henüz alışkanlık eklemedin.{% endif %}
             </p>
         </div>
         {% if rows %}
-        <div class="col-auto">
-            <div class="card card-sm">
-                <div class="card-body text-center">
-                    <div class="h1 mb-0 font-mono">{{ today_puan }}</div>
-                    <div class="text-secondary small">/ {{ max_puan }} puan bugün</div>
-                </div>
-            </div>
+        <div class="col-auto text-end">
+            <div class="bba-label mb-1">PUAN</div>
+            <div class="bba-stat-number">{{ today_puan }}<span class="bba-stat-number-sub">/{{ max_puan }}</span></div>
         </div>
         {% endif %}
     </div>
+    {% if rows and max_puan %}
+    <div class="bba-goal-bar mt-3"><div class="bba-goal-fill" style="width: {{ (today_puan / max_puan * 100) | round }}%;"></div></div>
+    {% endif %}
 </div>
 
 {% if not rows %}

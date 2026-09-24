@@ -23,6 +23,11 @@ TR_MONTHS = [
     "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
 ]
 TR_WEEKDAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+# İlk 3 harfle kısaltma yapılamıyor: "Pazartesi"/"Pazar" ikisi de "Paz",
+# "Cuma"/"Cumartesi" ikisi de "Cum" oluyor — tablo başlıklarında karışıklık
+# yaratıyordu. Standart Türkçe takvim kısaltmaları kullanılıyor (birbirinden
+# ayırt edilebilir).
+TR_WEEKDAYS_SHORT = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pa"]
 
 
 def now_tr():

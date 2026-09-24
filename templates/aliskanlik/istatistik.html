@@ -9,12 +9,10 @@
 {% if not table %}
     <div class="card"><div class="card-body text-center text-secondary">Henüz alışkanlık eklemedin.</div></div>
 {% else %}
-<div class="row row-cards mb-3">
-    <div class="col-sm-6 col-lg-4">
-        <div class="card card-sm"><div class="card-body">
-            <div class="font-weight-medium font-mono">{{ week_puan }} / {{ week_max_puan }}</div>
-            <div class="text-secondary">Bu Haftaki Etki Puanı</div>
-        </div></div>
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="bba-label mb-1">BU HAFTAKİ ETKİ PUANI</div>
+        <div class="bba-stat-number">{{ week_puan }}<span class="bba-stat-number-sub">/{{ week_max_puan }}</span></div>
     </div>
 </div>
 
@@ -25,7 +23,7 @@
                 <tr>
                     <th>Alışkanlık</th>
                     {% for d in week_days %}
-                        <th class="text-center">{{ weekdays[d.weekday()][:3] }}</th>
+                        <th class="text-center">{{ weekdays_short[d.weekday()] }}</th>
                     {% endfor %}
                     <th class="text-end">Toplam</th>
                     <th class="text-end">Seri</th>
@@ -36,7 +34,7 @@
                 <tr>
                     <td class="text-nowrap">{{ row.habit.name }} {{ impact_meter(row.habit.impact) }}</td>
                     {% for done in row.cells %}
-                        <td class="text-center">{% if done %}<span class="text-primary">✓</span>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
+                        <td class="text-center">{% if done %}<span class="bba-week-check">✓</span>{% else %}<span class="text-secondary">·</span>{% endif %}</td>
                     {% endfor %}
                     <td class="text-end fw-bold font-mono">{{ row.total }} / 7</td>
                     <td class="text-end font-mono">{% if row.streak > 0 %}{{ icon('flame', 14) }} {{ row.streak }}{% else %}—{% endif %}</td>

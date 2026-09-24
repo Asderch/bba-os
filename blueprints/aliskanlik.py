@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
-from common import today_tr
+from common import today_tr, TR_WEEKDAYS_SHORT
 from models import Habit, HabitCompletion, WEEKDAYS, DEFAULT_HABITS
 
 bp = Blueprint("aliskanlik", __name__, url_prefix="/aliskanlik")
@@ -332,6 +332,6 @@ def stats():
 
     return render_template(
         "aliskanlik/istatistik.html",
-        table=table, week_days=week_days, weekdays=WEEKDAYS, today=today,
+        table=table, week_days=week_days, weekdays=WEEKDAYS, weekdays_short=TR_WEEKDAYS_SHORT, today=today,
         week_puan=week_puan, week_max_puan=week_max_puan,
     )

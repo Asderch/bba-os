@@ -15,26 +15,26 @@
 <div class="row row-cards mb-3">
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm"><div class="card-body text-center">
-            <div class="h2 font-mono mb-0">{{ icon('flame', 15) }} {{ streak }}</div>
-            <div class="text-secondary small">Güncel Seri</div>
+            <div class="bba-label mb-1">GÜNCEL SERİ</div>
+            <div class="bba-stat-number bba-stat-number-sm">{{ icon('flame', 16) }} {{ streak }}</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm"><div class="card-body text-center">
-            <div class="h2 font-mono mb-0">{{ icon('trophy', 15) }} {{ best_streak }}</div>
-            <div class="text-secondary small">En Uzun Seri</div>
+            <div class="bba-label mb-1">EN UZUN SERİ</div>
+            <div class="bba-stat-number bba-stat-number-sm">{{ icon('trophy', 16) }} {{ best_streak }}</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm"><div class="card-body text-center">
-            <div class="h2 font-mono mb-0">%{{ consistency }}</div>
-            <div class="text-secondary small">Tutarlılık</div>
+            <div class="bba-label mb-1">TUTARLILIK</div>
+            <div class="bba-stat-number bba-stat-number-sm">%{{ consistency }}</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm"><div class="card-body text-center">
-            <div class="h2 font-mono mb-0">{{ this_month_count }}/{{ days_this_month }}</div>
-            <div class="text-secondary small">Bu Ay</div>
+            <div class="bba-label mb-1">BU AY</div>
+            <div class="bba-stat-number bba-stat-number-sm">{{ this_month_count }}<span class="bba-stat-number-sub">/{{ days_this_month }}</span></div>
         </div></div>
     </div>
 </div>

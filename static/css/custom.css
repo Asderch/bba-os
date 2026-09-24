@@ -72,3 +72,19 @@
 .donut-chart { width: 170px; height: 170px; flex-shrink: 0; }
 .donut-center-value { fill: var(--bba-text); font-size: 22px; font-weight: 800; font-family: var(--app-mono); }
 .donut-center-label { fill: var(--bba-text-muted); font-size: 10px; }
+
+/* Modül içi "mini hero" sayı — home.html'in ana Life Score'undan (.bba-hero-score)
+   küçük ama aynı mono/tabular-nums/sık harf aralığı hissini taşır. Tekil bir
+   sayının vitrin gibi öne çıkması gereken modül alt-sayfaları için (ör.
+   Alışkanlık Bugün/İstatistik/Detay) — plain Bootstrap h1/h2'nin "tasarlanmamış"
+   görünümü yerine. */
+.bba-stat-number {
+    font-family: var(--app-mono); font-size: 2.2rem; font-weight: 700; line-height: 1;
+    color: var(--bba-white); letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+.bba-stat-number-sm { font-size: 1.5rem; }
+.bba-stat-number-sub { font-size: 1rem; color: var(--bba-text-muted); font-weight: 500; letter-spacing: 0; }
+
+/* Haftalık döküm tablosunda "tamamlandı" işareti — plain text-primary (beyaz)
+   yerine bakır, tutarlı bir vurgu için. */
+.bba-week-check { color: var(--bba-copper); font-weight: 700; }
