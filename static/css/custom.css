@@ -87,3 +87,13 @@
 /* Haftalık döküm tablosunda "tamamlandı" işareti — plain text-primary (beyaz)
    yerine bakır, tutarlı bir vurgu için. */
 .bba-week-check { color: var(--bba-copper); font-weight: 700; }
+
+/* Alışkanlığın somut hedefi (ör. "2.5 litre", "23:00 – 07:00") — başlığın
+   yanında küçük bakır rozet. Sadece "neden" değil, ölçülebilir bir sayı/saat
+   göstererek alışkanlığı belirsizlikten çıkarmak için. */
+.bba-habit-target {
+    font-family: var(--app-mono); font-size: 0.68rem; font-weight: 700;
+    background: var(--bba-copper-dim); color: var(--bba-copper);
+    padding: 2px 8px; border-radius: var(--radius-pill); white-space: nowrap;
+    display: inline-flex; align-items: center;
+}

@@ -17,6 +17,10 @@
                     <label class="form-label">Neden? (isteğe bağlı)</label>
                     <input type="text" name="why" class="form-control" value="{{ habit.why or '' }}">
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Somut hedef (isteğe bağlı)</label>
+                    <input type="text" name="target" class="form-control" placeholder="ör. 2.5 litre, 23:00 – 07:00" value="{{ habit.target or '' }}">
+                </div>
                 <div class="col-md-4">
                     <label class="form-label">Etki puanı</label>
                     <select name="impact" class="form-select">

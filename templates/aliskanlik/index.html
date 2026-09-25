@@ -41,6 +41,7 @@
                 <a href="{{ url_for('aliskanlik.habit_detail', habit_id=row.habit.id) }}" class="text-reset" style="text-decoration: none;">
                     <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
                         {{ row.habit.name }}
+                        {% if row.habit.target %}<span class="bba-habit-target">{{ row.habit.target }}</span>{% endif %}
                         {{ impact_meter(row.habit.impact) }}
                     </div>
                 </a>

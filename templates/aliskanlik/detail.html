@@ -6,6 +6,7 @@
 
 {% block inner %}
 <div class="page-header mt-3 mb-3">
+    {% if habit.target %}<span class="bba-habit-target">{{ habit.target }}</span>{% endif %}
     {% if habit.why %}<p class="text-secondary mb-0">{{ habit.why }}</p>{% endif %}
     <p class="text-secondary small">
         {{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}

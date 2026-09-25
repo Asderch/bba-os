@@ -196,6 +196,7 @@ def manage_habits():
 def add_habit():
     name = request.form.get("name", "").strip()
     why = request.form.get("why", "").strip()
+    target = request.form.get("target", "").strip()
     impact = request.form.get("impact", type=int) or 3
     frequency_type = request.form.get("frequency_type", "gunluk").strip()
     weekly_target = request.form.get("weekly_target", type=int) if frequency_type == "haftalik" else None
@@ -212,7 +213,7 @@ def add_habit():
 
     max_order = db.session.query(db.func.max(Habit.sort_order)).scalar() or 0
     db.session.add(Habit(
-        name=name, why=why or None, impact=max(1, min(5, impact)),
+        name=name, why=why or None, target=target or None, impact=max(1, min(5, impact)),
         frequency_type=frequency_type, weekly_target=weekly_target,
         sort_order=max_order + 1, active=True,
     ))
@@ -227,6 +228,7 @@ def edit_habit(habit_id):
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         why = request.form.get("why", "").strip()
+        target = request.form.get("target", "").strip()
         impact = request.form.get("impact", type=int) or 3
         frequency_type = request.form.get("frequency_type", "gunluk").strip()
         weekly_target = request.form.get("weekly_target", type=int) if frequency_type == "haftalik" else None
@@ -246,6 +248,7 @@ def edit_habit(habit_id):
 
         habit.name = name
         habit.why = why or None
+        habit.target = target or None
         habit.impact = max(1, min(5, impact))
         habit.frequency_type = frequency_type
         habit.weekly_target = weekly_target
@@ -289,12 +292,12 @@ def seed_defaults():
     existing_names = {h.name for h in Habit.query.all()}
     max_order = db.session.query(db.func.max(Habit.sort_order)).scalar() or 0
     added = 0
-    for i, (name, why, impact, freq, target) in enumerate(DEFAULT_HABITS):
+    for i, (name, why, impact, freq, weekly_target, target) in enumerate(DEFAULT_HABITS):
         if name in existing_names:
             continue
         db.session.add(Habit(
-            name=name, why=why, impact=impact, frequency_type=freq,
-            weekly_target=target, sort_order=max_order + i + 1, active=True,
+            name=name, why=why, target=target, impact=impact, frequency_type=freq,
+            weekly_target=weekly_target, sort_order=max_order + i + 1, active=True,
         ))
         added += 1
     db.session.commit()

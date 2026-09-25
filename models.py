@@ -229,14 +229,14 @@ class MonthlySalary(db.Model):
 
 # (isim, neden, etki[1-5], sıklık['gunluk'|'haftalik'], haftalık_hedef)
 DEFAULT_HABITS = [
-    ("Aynı saatte yat/kalk", "Düzenli uyku ritmi için.", 5, "gunluk", None),
-    ("Yeterli su iç", "Enerjini ve odağını yüksek tutmak için.", 4, "gunluk", None),
-    ("7.000+ adım", "Günlük hareketi garantiye almak için.", 4, "gunluk", None),
-    ("İlk 30 dk telefonsuz", "Günün kontrolünü algoritmalara vermemek için.", 4, "gunluk", None),
-    ("20 dk öğrenme", "Bir yılda 120+ saat kendine yatırım yapmak için.", 3, "gunluk", None),
-    ("10 dk ortamı toparla", "Zihnini dağıtan görsel kaosu azaltmak için.", 2, "gunluk", None),
-    ("5 dk gün değerlendirmesi", "Günden ders çıkarıp yarına daha hazır başlamak için.", 2, "gunluk", None),
-    ("Egzersiz", "Daha güçlü ve fit bir vücut için.", 5, "haftalik", 3),
+    ("Aynı saatte yat/kalk", "Düzenli uyku ritmi için.", 5, "gunluk", None, "23:00 – 07:00"),
+    ("Yeterli su iç", "Enerjini ve odağını yüksek tutmak için.", 4, "gunluk", None, "2.5 litre"),
+    ("7.000+ adım", "Günlük hareketi garantiye almak için.", 4, "gunluk", None, None),
+    ("İlk 30 dk telefonsuz", "Günün kontrolünü algoritmalara vermemek için.", 4, "gunluk", None, None),
+    ("20 dk öğrenme", "Bir yılda 120+ saat kendine yatırım yapmak için.", 3, "gunluk", None, None),
+    ("10 dk ortamı toparla", "Zihnini dağıtan görsel kaosu azaltmak için.", 2, "gunluk", None, None),
+    ("5 dk gün değerlendirmesi", "Günden ders çıkarıp yarına daha hazır başlamak için.", 2, "gunluk", None, None),
+    ("Egzersiz", "Daha güçlü ve fit bir vücut için.", 5, "haftalik", 3, "30 dk"),
 ]
 
 
@@ -246,7 +246,8 @@ class Habit(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, unique=True)
-    why = db.Column(db.String(255))               # "Neden?" açıklaması
+    why = db.Column(db.String(255))                # "Neden?" açıklaması
+    target = db.Column(db.String(60))              # somut hedef, ör. "2.5 litre", "23:00 – 07:00"
     impact = db.Column(db.Integer, default=3)      # 1-5 arası etki puanı
     frequency_type = db.Column(db.String(10), default="gunluk")  # "gunluk" | "haftalik"
     weekly_target = db.Column(db.Integer)          # sadece frequency_type == "haftalik" için

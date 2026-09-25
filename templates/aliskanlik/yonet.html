@@ -27,6 +27,10 @@
                     <label class="form-label">Neden? (isteğe bağlı)</label>
                     <input type="text" name="why" class="form-control" placeholder="örn. Daha fit bir vücut için">
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Somut hedef (isteğe bağlı)</label>
+                    <input type="text" name="target" class="form-control" placeholder="ör. 2.5 litre, 23:00 – 07:00">
+                </div>
                 <div class="col-md-4">
                     <label class="form-label">Etki puanı</label>
                     <select name="impact" class="form-select">
@@ -64,6 +68,7 @@
             <a href="{{ url_for('aliskanlik.habit_detail', habit_id=habit.id) }}" class="text-reset" style="text-decoration: none; flex: 1;">
                 <div class="fw-medium">
                     {{ habit.name }}
+                    {% if habit.target %}<span class="bba-habit-target">{{ habit.target }}</span>{% endif %}
                     {{ impact_meter(habit.impact) }}
                     <span class="badge bg-secondary-lt">{{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}</span>
                 </div>
