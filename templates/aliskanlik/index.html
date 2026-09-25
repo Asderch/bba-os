@@ -36,28 +36,59 @@
 <div class="card">
     <div class="list-group list-group-flush">
         {% for row in rows %}
-        <div class="list-group-item d-flex align-items-center gap-3 {{ 'bg-body-tertiary' if row.done }}">
-            <div class="flex-fill">
-                <a href="{{ url_for('aliskanlik.habit_detail', habit_id=row.habit.id) }}" class="text-reset" style="text-decoration: none;">
-                    <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
-                        {{ row.habit.name }}
-                        {% if row.habit.target %}<span class="bba-habit-target">{{ row.habit.target }}</span>{% endif %}
-                        {{ impact_meter(row.habit.impact) }}
-                    </div>
-                </a>
-                {% if row.habit.why %}<div class="text-secondary small">{{ row.habit.why }}</div>{% endif %}
+        <div class="list-group-item {{ 'bg-body-tertiary' if row.done }}">
+            <div class="d-flex align-items-center gap-3">
+                <div class="flex-fill" style="min-width: 0;">
+                    <a href="{{ url_for('aliskanlik.habit_detail', habit_id=row.habit.id) }}" class="text-reset" style="text-decoration: none;">
+                        <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
+                            {{ row.habit.name }}
+                            {% if row.habit.target %}<span class="bba-habit-target">{{ row.habit.target }}</span>{% endif %}
+                            {{ impact_meter(row.habit.impact) }}
+                        </div>
+                    </a>
+                    {% if row.habit.why %}<div class="text-secondary small">{{ row.habit.why }}</div>{% endif %}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    {% if row.streak > 0 %}<span class="badge bba-tag-streak font-mono">{{ icon('flame', 14) }} {{ row.streak }}</span>{% endif %}
+                    <span class="badge {{ 'bba-tag-positive' if row.week_count >= row.week_target else 'bba-tag-neutral' }} font-mono">
+                        Bu hafta {{ row.week_count }}/{{ row.week_target }}
+                    </span>
+                </div>
+                {% if row.habit.track_mode == 'toggle' %}
+                <form method="POST" action="{{ url_for('aliskanlik.toggle_habit', habit_id=row.habit.id) }}">
+                    <button type="submit" class="daily-check-btn" aria-label="{{ row.habit.name }} tamamlandı olarak işaretle">
+                        <span class="daily-check {{ 'daily-check-done' if row.done }}">{{ '✓' if row.done }}</span>
+                    </button>
+                </form>
+                {% else %}
+                <span class="daily-check {{ 'daily-check-done' if row.done }}" aria-hidden="true">{{ '✓' if row.done }}</span>
+                {% endif %}
             </div>
-            <div class="d-flex align-items-center gap-2">
-                {% if row.streak > 0 %}<span class="badge bba-tag-streak font-mono">{{ icon('flame', 14) }} {{ row.streak }}</span>{% endif %}
-                <span class="badge {{ 'bba-tag-positive' if row.week_count >= row.week_target else 'bba-tag-neutral' }} font-mono">
-                    Bu hafta {{ row.week_count }}/{{ row.week_target }}
-                </span>
+
+            {% if row.habit.track_mode == 'amount' %}
+            <div class="bba-habit-log mt-2">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="font-mono small">{{ row.today_amount_display }} / {{ row.target_amount_display }}</span>
+                    <span class="text-secondary small">%{{ row.progress_pct }}</span>
+                </div>
+                <div class="bba-goal-bar mb-2"><div class="bba-goal-fill" style="width: {{ row.progress_pct }}%;"></div></div>
+                <form method="POST" action="{{ url_for('aliskanlik.log_amount', habit_id=row.habit.id) }}" class="d-flex gap-2 flex-wrap">
+                    {% if row.habit.unit == 'ml' %}
+                        <button type="submit" name="amount" value="200" class="btn btn-outline-secondary btn-sm">+200 ml</button>
+                        <button type="submit" name="amount" value="250" class="btn btn-outline-secondary btn-sm">+250 ml</button>
+                        <button type="submit" name="amount" value="500" class="btn btn-outline-secondary btn-sm">+500 ml</button>
+                    {% else %}
+                        <input type="number" name="amount" class="form-control form-control-sm font-mono" style="width: 110px;" placeholder="{{ row.habit.unit }}" min="0" step="1" required>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Ekle</button>
+                    {% endif %}
+                </form>
             </div>
-            <form method="POST" action="{{ url_for('aliskanlik.toggle_habit', habit_id=row.habit.id) }}">
-                <button type="submit" class="daily-check-btn" aria-label="{{ row.habit.name }} tamamlandı olarak işaretle">
-                    <span class="daily-check {{ 'daily-check-done' if row.done }}">{{ '✓' if row.done }}</span>
-                </button>
+            {% elif row.habit.track_mode == 'note' %}
+            <form method="POST" action="{{ url_for('aliskanlik.log_note', habit_id=row.habit.id) }}" class="mt-2 d-flex gap-2">
+                <input type="text" name="note" class="form-control form-control-sm flex-fill" style="min-width: 0;" placeholder="Bugün ne yaptın?" value="{{ row.today_note or '' }}">
+                <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">Kaydet</button>
             </form>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

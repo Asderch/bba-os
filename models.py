@@ -227,35 +227,58 @@ class MonthlySalary(db.Model):
 # WEEKDAYS artık common.TR_WEEKDAYS'in re-export'u (dosya başındaki import
 # bloğuna bakın) — aliskanlik.py hiç değişmeden aynı ismi kullanmaya devam eder.
 
-# (isim, neden, etki[1-5], sıklık['gunluk'|'haftalik'], haftalık_hedef)
+# Her sözlük bir Habit(**d) çağrısına karşılık gelir — sadece dolu alanlar
+# elle yazılır, boş bırakılanlar modeldeki default'u alır (bkz. seed_defaults).
 DEFAULT_HABITS = [
-    ("Aynı saatte yat/kalk", "Düzenli uyku ritmi için.", 5, "gunluk", None, "23:00 – 07:00"),
-    ("Yeterli su iç", "Enerjini ve odağını yüksek tutmak için.", 4, "gunluk", None, "2.5 litre"),
-    ("7.000+ adım", "Günlük hareketi garantiye almak için.", 4, "gunluk", None, None),
-    ("İlk 30 dk telefonsuz", "Günün kontrolünü algoritmalara vermemek için.", 4, "gunluk", None, None),
-    ("20 dk öğrenme", "Bir yılda 120+ saat kendine yatırım yapmak için.", 3, "gunluk", None, None),
-    ("10 dk ortamı toparla", "Zihnini dağıtan görsel kaosu azaltmak için.", 2, "gunluk", None, None),
-    ("5 dk gün değerlendirmesi", "Günden ders çıkarıp yarına daha hazır başlamak için.", 2, "gunluk", None, None),
-    ("Egzersiz", "Daha güçlü ve fit bir vücut için.", 5, "haftalik", 3, "30 dk"),
+    {"name": "Aynı saatte yat/kalk", "why": "Düzenli uyku ritmi için.", "impact": 5,
+     "frequency_type": "gunluk", "target": "23:00 – 07:00"},
+    {"name": "Yeterli su iç", "why": "Enerjini ve odağını yüksek tutmak için.", "impact": 4,
+     "frequency_type": "gunluk", "track_mode": "amount", "unit": "ml", "daily_target": 2500, "target": "2.5 litre"},
+    {"name": "7.000+ adım", "why": "Günlük hareketi garantiye almak için.", "impact": 4,
+     "frequency_type": "gunluk", "track_mode": "amount", "unit": "adım", "daily_target": 7000},
+    {"name": "İlk 30 dk telefonsuz", "why": "Günün kontrolünü algoritmalara vermemek için.", "impact": 4,
+     "frequency_type": "gunluk"},
+    {"name": "20 dk öğrenme", "why": "Bir yılda 120+ saat kendine yatırım yapmak için.", "impact": 3,
+     "frequency_type": "gunluk", "track_mode": "note"},
+    {"name": "10 dk ortamı toparla", "why": "Zihnini dağıtan görsel kaosu azaltmak için.", "impact": 2,
+     "frequency_type": "gunluk"},
+    {"name": "5 dk gün değerlendirmesi", "why": "Günden ders çıkarıp yarına daha hazır başlamak için.", "impact": 2,
+     "frequency_type": "gunluk"},
+    {"name": "Egzersiz", "why": "Daha güçlü ve fit bir vücut için.", "impact": 5,
+     "frequency_type": "haftalik", "weekly_target": 3, "target": "30 dk"},
 ]
 
 
 class Habit(db.Model):
-    """Süre hedefi olmayan, işaretleme + etki puanıyla takip edilen alışkanlık."""
+    """Süre hedefi olmayan, işaretleme + etki puanıyla takip edilen alışkanlık.
+
+    track_mode üç şekilde işlenebilir:
+    - "toggle" (varsayılan): sadece yapıldı/yapılmadı (mevcut davranış).
+    - "amount": günlük sayısal bir miktar birikir (ör. su ml, adım sayısı);
+      gün toplamı `daily_target`'a ulaşınca otomatik "yapıldı" sayılır.
+    - "note": günde bir serbest metin notu (ör. "bugün ne öğrendin?");
+      not kaydedilince "yapıldı" sayılır.
+    Gerçek girişler HabitLog'da tutulur, HabitCompletion "yapıldı" durumunun
+    tek kaynağı olmaya devam eder (streak/Life Score hesapları değişmesin diye).
+    """
     __tablename__ = "habits"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, unique=True)
     why = db.Column(db.String(255))                # "Neden?" açıklaması
-    target = db.Column(db.String(60))              # somut hedef, ör. "2.5 litre", "23:00 – 07:00"
+    target = db.Column(db.String(60))              # somut hedef rozeti, ör. "23:00 – 07:00"
     impact = db.Column(db.Integer, default=3)      # 1-5 arası etki puanı
     frequency_type = db.Column(db.String(10), default="gunluk")  # "gunluk" | "haftalik"
     weekly_target = db.Column(db.Integer)          # sadece frequency_type == "haftalik" için
+    track_mode = db.Column(db.String(10), default="toggle")  # "toggle" | "amount" | "note"
+    unit = db.Column(db.String(20))                # "amount" için, ör. "ml", "adım"
+    daily_target = db.Column(db.Float)             # "amount" için günlük sayısal hedef
     active = db.Column(db.Boolean, default=True)   # False = arşivlenmiş, geçmiş verisi korunur
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=_local_now)
 
     completions = db.relationship("HabitCompletion", backref="habit", lazy=True, cascade="all, delete-orphan")
+    logs = db.relationship("HabitLog", backref="habit", lazy=True, cascade="all, delete-orphan")
 
 
 class HabitCompletion(db.Model):
@@ -269,6 +292,22 @@ class HabitCompletion(db.Model):
     __table_args__ = (
         db.UniqueConstraint("habit_id", "completion_date", name="uq_habit_date"),
     )
+
+
+class HabitLog(db.Model):
+    """track_mode == 'amount' | 'note' alışkanlıkların günlük gerçek girişleri.
+
+    'amount' tipinde her ekleme ayrı bir satırdır (günün toplamı = sum(amount));
+    'note' tipinde günde tek satır tutulur (kaydedince üzerine yazılır).
+    """
+    __tablename__ = "habit_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    habit_id = db.Column(db.Integer, db.ForeignKey("habits.id"), nullable=False, index=True)
+    log_date = db.Column(db.Date, nullable=False, index=True)
+    amount = db.Column(db.Float)
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=_local_now)
 
 
 class AppSetting(db.Model):

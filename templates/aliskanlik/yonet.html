@@ -52,6 +52,22 @@
                     <label class="form-label">Haftalık hedef (kaç kez)</label>
                     <input type="number" name="weekly_target" class="form-control font-mono" min="1" max="7" value="3">
                 </div>
+                <div class="col-md-4">
+                    <label class="form-label">Nasıl takip edilsin?</label>
+                    <select name="track_mode" class="form-select" id="track-mode-select" onchange="toggleAmountFields()">
+                        <option value="toggle">Basit tik (yapıldı/yapılmadı)</option>
+                        <option value="amount">Miktar (ör. litre, adım)</option>
+                        <option value="note">Not (o günü serbest metinle anlat)</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-none" id="unit-field">
+                    <label class="form-label">Birim</label>
+                    <input type="text" name="unit" class="form-control" placeholder="ör. ml, adım, sayfa">
+                </div>
+                <div class="col-md-4 d-none" id="daily-target-field">
+                    <label class="form-label">Günlük sayısal hedef</label>
+                    <input type="number" name="daily_target" class="form-control font-mono" min="0" step="any" placeholder="ör. 2500">
+                </div>
             </div>
             <button type="submit" class="btn btn-primary mt-3">Ekle</button>
         </form>
@@ -119,6 +135,13 @@ function toggleWeeklyTarget() {
     const field = document.getElementById('weekly-target-field');
     if (freq === 'haftalik') field.classList.remove('d-none');
     else field.classList.add('d-none');
+}
+function toggleAmountFields() {
+    const mode = document.getElementById('track-mode-select').value;
+    const unitField = document.getElementById('unit-field');
+    const targetField = document.getElementById('daily-target-field');
+    if (mode === 'amount') { unitField.classList.remove('d-none'); targetField.classList.remove('d-none'); }
+    else { unitField.classList.add('d-none'); targetField.classList.add('d-none'); }
 }
 </script>
 {% endblock %}

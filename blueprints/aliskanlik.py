@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
 from common import today_tr, TR_WEEKDAYS_SHORT
-from models import Habit, HabitCompletion, WEEKDAYS, DEFAULT_HABITS
+from models import Habit, HabitCompletion, HabitLog, WEEKDAYS, DEFAULT_HABITS
 
 bp = Blueprint("aliskanlik", __name__, url_prefix="/aliskanlik")
 
@@ -99,6 +99,17 @@ def _last_30_days_grid(habit_id):
     return days
 
 
+def _format_amount(value, unit):
+    """"amount" tipi bir alışkanlığın miktarını okunur biçime çevirir.
+    ml -> litreye çevrilip gösterilir (ör. 2500 -> "2.5 L"), diğerleri
+    binlik ayraçlı tam sayı + birim olarak (ör. 7000 -> "7.000 adım")."""
+    if value is None:
+        return "-"
+    if unit == "ml":
+        return f"{value / 1000:.1f} L"
+    return f"{int(value):,} {unit}".replace(",", ".")
+
+
 # ----------------------------------------------------------------------
 @bp.route("/")
 def index():
@@ -107,6 +118,14 @@ def index():
 
     habits = Habit.query.filter_by(active=True).order_by(Habit.sort_order).all()
     todays_completions = {c.habit_id for c in HabitCompletion.query.filter_by(completion_date=today).all()}
+
+    today_amount_by_habit = {}
+    today_note_by_habit = {}
+    for log in HabitLog.query.filter_by(log_date=today).all():
+        if log.amount is not None:
+            today_amount_by_habit[log.habit_id] = today_amount_by_habit.get(log.habit_id, 0) + log.amount
+        if log.note is not None:
+            today_note_by_habit[log.habit_id] = log.note
 
     week_completions = (
         HabitCompletion.query
@@ -125,13 +144,21 @@ def index():
         max_puan += h.impact
         if done:
             today_puan += h.impact
-        rows.append({
+        row = {
             "habit": h,
             "done": done,
             "week_count": week_count_by_habit.get(h.id, 0),
             "week_target": h.weekly_target if h.frequency_type == "haftalik" else 7,
             "streak": _calculate_streak(h.id),
-        })
+        }
+        if h.track_mode == "amount":
+            total = today_amount_by_habit.get(h.id, 0)
+            row["today_amount_display"] = _format_amount(total, h.unit)
+            row["target_amount_display"] = _format_amount(h.daily_target, h.unit)
+            row["progress_pct"] = min(100, round(total / h.daily_target * 100)) if h.daily_target else 0
+        elif h.track_mode == "note":
+            row["today_note"] = today_note_by_habit.get(h.id)
+        rows.append(row)
 
     done_count = sum(1 for r in rows if r["done"])
 
@@ -157,6 +184,54 @@ def toggle_habit(habit_id):
     return redirect(url_for("aliskanlik.index"))
 
 
+@bp.route("/habit/<int:habit_id>/log-amount", methods=["POST"])
+def log_amount(habit_id):
+    """'amount' tipi bir alışkanlığa bugün için bir miktar ekler (birikimli).
+    Gün toplamı günlük hedefe ulaşınca otomatik 'yapıldı' işaretlenir."""
+    habit = Habit.query.get_or_404(habit_id)
+    today = today_tr()
+    amount = request.form.get("amount", type=float)
+
+    if not amount or amount <= 0:
+        flash("Geçerli bir miktar gir.")
+        return redirect(url_for("aliskanlik.index"))
+
+    db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
+    db.session.commit()
+
+    total = db.session.query(db.func.sum(HabitLog.amount)).filter(
+        HabitLog.habit_id == habit.id, HabitLog.log_date == today,
+    ).scalar() or 0
+    already_done = HabitCompletion.query.filter_by(habit_id=habit.id, completion_date=today).first()
+    if habit.daily_target and total >= habit.daily_target and not already_done:
+        db.session.add(HabitCompletion(habit_id=habit.id, completion_date=today))
+        db.session.commit()
+    return redirect(url_for("aliskanlik.index"))
+
+
+@bp.route("/habit/<int:habit_id>/log-note", methods=["POST"])
+def log_note(habit_id):
+    """'note' tipi bir alışkanlığa bugün için serbest metin notu kaydeder
+    (günde tek kayıt, üzerine yazılır) ve alışkanlığı 'yapıldı' işaretler."""
+    habit = Habit.query.get_or_404(habit_id)
+    today = today_tr()
+    note = request.form.get("note", "").strip()
+
+    if not note:
+        flash("Not boş olamaz.")
+        return redirect(url_for("aliskanlik.index"))
+
+    existing_log = HabitLog.query.filter_by(habit_id=habit.id, log_date=today).first()
+    if existing_log:
+        existing_log.note = note
+    else:
+        db.session.add(HabitLog(habit_id=habit.id, log_date=today, note=note))
+    if not HabitCompletion.query.filter_by(habit_id=habit.id, completion_date=today).first():
+        db.session.add(HabitCompletion(habit_id=habit.id, completion_date=today))
+    db.session.commit()
+    return redirect(url_for("aliskanlik.index"))
+
+
 # ----------------------------------------------------------------------
 @bp.route("/habit/<int:habit_id>")
 def habit_detail(habit_id):
@@ -177,10 +252,34 @@ def habit_detail(habit_id):
     ).count()
     days_this_month = (today - month_start).days + 1
 
+    recent_logs = []
+    if habit.track_mode == "note":
+        recent_logs = (
+            HabitLog.query.filter_by(habit_id=habit.id)
+            .filter(HabitLog.note.isnot(None))
+            .order_by(HabitLog.log_date.desc())
+            .limit(14).all()
+        )
+    elif habit.track_mode == "amount":
+        daily_totals = {}
+        logs = (
+            HabitLog.query.filter_by(habit_id=habit.id)
+            .filter(HabitLog.amount.isnot(None))
+            .order_by(HabitLog.log_date.desc())
+            .limit(200).all()
+        )
+        for log in logs:
+            daily_totals[log.log_date] = daily_totals.get(log.log_date, 0) + log.amount
+        recent_logs = [
+            {"date": d, "amount_display": _format_amount(total, habit.unit)}
+            for d, total in sorted(daily_totals.items(), reverse=True)[:14]
+        ]
+
     return render_template(
         "aliskanlik/detail.html",
         habit=habit, streak=streak, best_streak=best_streak, consistency=consistency,
         grid=grid, this_month_count=this_month_count, days_this_month=days_this_month,
+        recent_logs=recent_logs,
     )
 
 
@@ -200,6 +299,9 @@ def add_habit():
     impact = request.form.get("impact", type=int) or 3
     frequency_type = request.form.get("frequency_type", "gunluk").strip()
     weekly_target = request.form.get("weekly_target", type=int) if frequency_type == "haftalik" else None
+    track_mode = request.form.get("track_mode", "toggle").strip()
+    unit = request.form.get("unit", "").strip()
+    daily_target = request.form.get("daily_target", type=float) if track_mode == "amount" else None
 
     if not name:
         flash("Alışkanlık adı zorunlu.")
@@ -210,11 +312,14 @@ def add_habit():
     if frequency_type == "haftalik":
         weekly_target = weekly_target if (weekly_target and weekly_target > 0) else 3
         weekly_target = min(7, weekly_target)
+    if track_mode != "amount":
+        unit = ""
 
     max_order = db.session.query(db.func.max(Habit.sort_order)).scalar() or 0
     db.session.add(Habit(
         name=name, why=why or None, target=target or None, impact=max(1, min(5, impact)),
         frequency_type=frequency_type, weekly_target=weekly_target,
+        track_mode=track_mode, unit=unit or None, daily_target=daily_target,
         sort_order=max_order + 1, active=True,
     ))
     db.session.commit()
@@ -232,6 +337,9 @@ def edit_habit(habit_id):
         impact = request.form.get("impact", type=int) or 3
         frequency_type = request.form.get("frequency_type", "gunluk").strip()
         weekly_target = request.form.get("weekly_target", type=int) if frequency_type == "haftalik" else None
+        track_mode = request.form.get("track_mode", "toggle").strip()
+        unit = request.form.get("unit", "").strip()
+        daily_target = request.form.get("daily_target", type=float) if track_mode == "amount" else None
 
         if not name:
             flash("Alışkanlık adı zorunlu.")
@@ -245,6 +353,8 @@ def edit_habit(habit_id):
         if frequency_type == "haftalik":
             weekly_target = weekly_target if (weekly_target and weekly_target > 0) else 3
             weekly_target = min(7, weekly_target)
+        if track_mode != "amount":
+            unit = ""
 
         habit.name = name
         habit.why = why or None
@@ -252,6 +362,9 @@ def edit_habit(habit_id):
         habit.impact = max(1, min(5, impact))
         habit.frequency_type = frequency_type
         habit.weekly_target = weekly_target
+        habit.track_mode = track_mode
+        habit.unit = unit or None
+        habit.daily_target = daily_target
         db.session.commit()
         flash(f"'{habit.name}' güncellendi.")
         return redirect(url_for("aliskanlik.manage_habits"))
@@ -292,13 +405,10 @@ def seed_defaults():
     existing_names = {h.name for h in Habit.query.all()}
     max_order = db.session.query(db.func.max(Habit.sort_order)).scalar() or 0
     added = 0
-    for i, (name, why, impact, freq, weekly_target, target) in enumerate(DEFAULT_HABITS):
-        if name in existing_names:
+    for i, defaults in enumerate(DEFAULT_HABITS):
+        if defaults["name"] in existing_names:
             continue
-        db.session.add(Habit(
-            name=name, why=why, target=target, impact=impact, frequency_type=freq,
-            weekly_target=weekly_target, sort_order=max_order + i + 1, active=True,
-        ))
+        db.session.add(Habit(sort_order=max_order + i + 1, active=True, **defaults))
         added += 1
     db.session.commit()
     flash(f"{added} hazır alışkanlık eklendi." if added else "Hazır alışkanlıkların hepsi zaten listende.")

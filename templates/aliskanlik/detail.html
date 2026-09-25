@@ -54,6 +54,32 @@
     </div>
 </div>
 
+{% if habit.track_mode == 'note' and recent_logs %}
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Geçmiş Notlar</h3></div>
+    <div class="list-group list-group-flush">
+        {% for log in recent_logs %}
+        <div class="list-group-item">
+            <div class="text-secondary small">{{ log.log_date.strftime('%d.%m.%Y') }}</div>
+            <div>{{ log.note }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% elif habit.track_mode == 'amount' and recent_logs %}
+<div class="card mb-3">
+    <div class="card-header"><h3 class="card-title">Geçmiş Girişler</h3></div>
+    <div class="list-group list-group-flush">
+        {% for log in recent_logs %}
+        <div class="list-group-item d-flex justify-content-between">
+            <span class="text-secondary small">{{ log.date.strftime('%d.%m.%Y') }}</span>
+            <span class="font-mono">{{ log.amount_display }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <div class="d-flex gap-2">
     <a href="{{ url_for('aliskanlik.edit_habit', habit_id=habit.id) }}" class="btn btn-outline-secondary btn-sm">{{ icon('pencil', 16) }} Düzenle</a>
     <a href="{{ url_for('aliskanlik.index') }}" class="btn btn-outline-secondary btn-sm">← Bugün</a>

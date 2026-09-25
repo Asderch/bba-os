@@ -25,6 +25,9 @@ _ADDED_COLUMNS = [
     ("transactions", "source", "VARCHAR(64)"),
     ("daily_tasks", "active", "BOOLEAN DEFAULT 1"),
     ("habits", "target", "VARCHAR(60)"),
+    ("habits", "track_mode", "VARCHAR(10) DEFAULT 'toggle'"),
+    ("habits", "unit", "VARCHAR(20)"),
+    ("habits", "daily_target", "FLOAT"),
 ]
 
 
