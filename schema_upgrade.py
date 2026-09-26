@@ -28,6 +28,7 @@ _ADDED_COLUMNS = [
     ("habits", "track_mode", "VARCHAR(10) DEFAULT 'toggle'"),
     ("habits", "unit", "VARCHAR(20)"),
     ("habits", "daily_target", "FLOAT"),
+    ("habits", "amount_input_mode", "VARCHAR(12) DEFAULT 'cumulative'"),
 ]
 
 

@@ -5,12 +5,13 @@ sadece tik yerine gerçek veri girilebilmeli, hedefe ulaşınca otomatik
 from common import today_tr as _today
 
 
-def _seed_amount_habit(unit="ml", daily_target=2500):
+def _seed_amount_habit(unit="ml", daily_target=2500, amount_input_mode="cumulative"):
     from extensions import db
     from models import Habit
     habit = Habit(
         name="Su iç", impact=4, frequency_type="gunluk",
         track_mode="amount", unit=unit, daily_target=daily_target,
+        amount_input_mode=amount_input_mode,
     )
     db.session.add(habit)
     db.session.commit()
@@ -45,6 +46,63 @@ def test_log_amount_accumulates_and_auto_completes_at_target(client, flask_app):
         assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is not None
         logs = HabitLog.query.filter_by(habit_id=habit_id).all()
         assert sum(l.amount for l in logs) == 500
+
+
+def test_log_amount_latest_mode_overwrites_instead_of_summing(client, flask_app):
+    """Adım sayısı gibi 'latest' modda her giriş bir önceki DEĞERİN üzerine
+    yazmalı — art arda +3000 girmek 6000 değil, güncel değer olarak 3000
+    kalmalı (telefon zaten günün toplamını gösteriyor, tekrar toplanmamalı)."""
+    import app as appmod
+    from models import HabitLog
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(unit="adım", daily_target=7000, amount_input_mode="latest")
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "3000"})
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "5000"})
+    with appmod.app.app_context():
+        logs = HabitLog.query.filter_by(habit_id=habit_id).all()
+        assert len(logs) == 1
+        assert logs[0].amount == 5000
+
+
+def test_log_amount_latest_mode_undoes_completion_when_corrected_below_target(client, flask_app):
+    """'latest' modda hedefi geçtikten sonra değeri düzeltip hedefin altına
+    çekersen 'yapıldı' işareti geri alınmalı (cumulative/su'da bu asla olmaz)."""
+    import app as appmod
+    from models import HabitCompletion
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(unit="adım", daily_target=7000, amount_input_mode="latest")
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "8000"})
+    with appmod.app.app_context():
+        assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is not None
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "4000"})
+    with appmod.app.app_context():
+        assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is None
+
+
+def test_log_amount_cumulative_mode_never_undoes_completion(client, flask_app):
+    """Su gibi birikimli modda hedefe ulaşınca kazanılan 'yapıldı' geri alınmaz
+    (sonraki eklemeler sadece toplamı büyütür, düşüremez)."""
+    import app as appmod
+    from models import HabitCompletion
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(daily_target=500, amount_input_mode="cumulative")
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "500"})
+    with appmod.app.app_context():
+        assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is not None
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "200"})
+    with appmod.app.app_context():
+        assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is not None
 
 
 def test_log_amount_rejects_invalid_amount(client, flask_app):
@@ -122,6 +180,8 @@ def test_seed_defaults_assigns_track_modes(client, flask_app):
         toparla = Habit.query.filter_by(name="10 dk ortamı toparla").first()
 
         assert su.track_mode == "amount" and su.unit == "ml" and su.daily_target == 2500
+        assert su.amount_input_mode == "cumulative"
         assert adim.track_mode == "amount" and adim.unit == "adım" and adim.daily_target == 7000
+        assert adim.amount_input_mode == "latest"
         assert ogrenme.track_mode == "note"
         assert toparla.track_mode == "toggle"

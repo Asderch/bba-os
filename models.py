@@ -235,7 +235,8 @@ DEFAULT_HABITS = [
     {"name": "Yeterli su iç", "why": "Enerjini ve odağını yüksek tutmak için.", "impact": 4,
      "frequency_type": "gunluk", "track_mode": "amount", "unit": "ml", "daily_target": 2500, "target": "2.5 litre"},
     {"name": "7.000+ adım", "why": "Günlük hareketi garantiye almak için.", "impact": 4,
-     "frequency_type": "gunluk", "track_mode": "amount", "unit": "adım", "daily_target": 7000},
+     "frequency_type": "gunluk", "track_mode": "amount", "unit": "adım", "daily_target": 7000,
+     "amount_input_mode": "latest"},
     {"name": "İlk 30 dk telefonsuz", "why": "Günün kontrolünü algoritmalara vermemek için.", "impact": 4,
      "frequency_type": "gunluk"},
     {"name": "20 dk öğrenme", "why": "Bir yılda 120+ saat kendine yatırım yapmak için.", "impact": 3,
@@ -273,6 +274,11 @@ class Habit(db.Model):
     track_mode = db.Column(db.String(10), default="toggle")  # "toggle" | "amount" | "note"
     unit = db.Column(db.String(20))                # "amount" için, ör. "ml", "adım"
     daily_target = db.Column(db.Float)             # "amount" için günlük sayısal hedef
+    amount_input_mode = db.Column(db.String(12), default="cumulative")
+    # "amount" girişi nasıl toplanır:
+    # - "cumulative" (varsayılan): her ekleme günün toplamına eklenir (ör. su: +200ml, +500ml).
+    # - "latest": her girilen değer o günün SON/güncel değeridir, üzerine yazılır, toplanmaz
+    #   (ör. adım sayısı — telefon zaten günün toplam adımını gösterir, tekrar tekrar eklenmez).
     active = db.Column(db.Boolean, default=True)   # False = arşivlenmiş, geçmiş verisi korunur
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=_local_now)

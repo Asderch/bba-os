@@ -68,6 +68,13 @@
                     <label class="form-label">Günlük sayısal hedef</label>
                     <input type="number" name="daily_target" class="form-control font-mono" min="0" step="any" placeholder="ör. 2500">
                 </div>
+                <div class="col-md-6 d-none" id="amount-input-mode-field">
+                    <label class="form-label">Girilen değer nasıl işlensin?</label>
+                    <select name="amount_input_mode" class="form-select">
+                        <option value="cumulative">Birikimli — her giriş toplama eklenir (ör. su)</option>
+                        <option value="latest">Güncel değer — her giriş bir önceki değerin üzerine yazılır (ör. adım sayısı)</option>
+                    </select>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary mt-3">Ekle</button>
         </form>
@@ -140,8 +147,16 @@ function toggleAmountFields() {
     const mode = document.getElementById('track-mode-select').value;
     const unitField = document.getElementById('unit-field');
     const targetField = document.getElementById('daily-target-field');
-    if (mode === 'amount') { unitField.classList.remove('d-none'); targetField.classList.remove('d-none'); }
-    else { unitField.classList.add('d-none'); targetField.classList.add('d-none'); }
+    const inputModeField = document.getElementById('amount-input-mode-field');
+    if (mode === 'amount') {
+        unitField.classList.remove('d-none');
+        targetField.classList.remove('d-none');
+        inputModeField.classList.remove('d-none');
+    } else {
+        unitField.classList.add('d-none');
+        targetField.classList.add('d-none');
+        inputModeField.classList.add('d-none');
+    }
 }
 </script>
 {% endblock %}

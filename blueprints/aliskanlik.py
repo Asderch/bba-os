@@ -153,6 +153,7 @@ def index():
         }
         if h.track_mode == "amount":
             total = today_amount_by_habit.get(h.id, 0)
+            row["today_amount_raw"] = total
             row["today_amount_display"] = _format_amount(total, h.unit)
             row["target_amount_display"] = _format_amount(h.daily_target, h.unit)
             row["progress_pct"] = min(100, round(total / h.daily_target * 100)) if h.daily_target else 0
@@ -186,25 +187,49 @@ def toggle_habit(habit_id):
 
 @bp.route("/habit/<int:habit_id>/log-amount", methods=["POST"])
 def log_amount(habit_id):
-    """'amount' tipi bir alışkanlığa bugün için bir miktar ekler (birikimli).
-    Gün toplamı günlük hedefe ulaşınca otomatik 'yapıldı' işaretlenir."""
+    """'amount' tipi bir alışkanlığa bugün için bir miktar girer.
+
+    amount_input_mode == "cumulative" (ör. su): her giriş günün toplamına
+    EKLENİR, ayrı bir satır olarak.
+    amount_input_mode == "latest" (ör. adım sayısı): girilen değer günün
+    GÜNCEL toplam değeridir, önceki değerin üzerine yazılır — telefonun
+    adım sayacı zaten kümülatif bir toplam gösterdiği için tekrar tekrar
+    eklemek yanlış olurdu.
+    """
     habit = Habit.query.get_or_404(habit_id)
     today = today_tr()
     amount = request.form.get("amount", type=float)
 
-    if not amount or amount <= 0:
+    if amount is None or amount < 0:
         flash("Geçerli bir miktar gir.")
         return redirect(url_for("aliskanlik.index"))
 
-    db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
-    db.session.commit()
+    if habit.amount_input_mode == "latest":
+        existing_log = HabitLog.query.filter_by(habit_id=habit.id, log_date=today).first()
+        if existing_log:
+            existing_log.amount = amount
+        else:
+            db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
+        db.session.commit()
+    else:
+        if amount <= 0:
+            flash("Geçerli bir miktar gir.")
+            return redirect(url_for("aliskanlik.index"))
+        db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
+        db.session.commit()
 
     total = db.session.query(db.func.sum(HabitLog.amount)).filter(
         HabitLog.habit_id == habit.id, HabitLog.log_date == today,
     ).scalar() or 0
     already_done = HabitCompletion.query.filter_by(habit_id=habit.id, completion_date=today).first()
-    if habit.daily_target and total >= habit.daily_target and not already_done:
+    target_reached = bool(habit.daily_target) and total >= habit.daily_target
+    if target_reached and not already_done:
         db.session.add(HabitCompletion(habit_id=habit.id, completion_date=today))
+        db.session.commit()
+    elif not target_reached and already_done and habit.amount_input_mode == "latest":
+        # "latest" modunda değeri düzeltip hedefin altına çekmiş olabilir —
+        # cumulative modda (su) kazanılan tamamlanma asla geri alınmaz.
+        db.session.delete(already_done)
         db.session.commit()
     return redirect(url_for("aliskanlik.index"))
 
@@ -302,6 +327,7 @@ def add_habit():
     track_mode = request.form.get("track_mode", "toggle").strip()
     unit = request.form.get("unit", "").strip()
     daily_target = request.form.get("daily_target", type=float) if track_mode == "amount" else None
+    amount_input_mode = request.form.get("amount_input_mode", "cumulative").strip()
 
     if not name:
         flash("Alışkanlık adı zorunlu.")
@@ -314,12 +340,14 @@ def add_habit():
         weekly_target = min(7, weekly_target)
     if track_mode != "amount":
         unit = ""
+        amount_input_mode = "cumulative"
 
     max_order = db.session.query(db.func.max(Habit.sort_order)).scalar() or 0
     db.session.add(Habit(
         name=name, why=why or None, target=target or None, impact=max(1, min(5, impact)),
         frequency_type=frequency_type, weekly_target=weekly_target,
         track_mode=track_mode, unit=unit or None, daily_target=daily_target,
+        amount_input_mode=amount_input_mode,
         sort_order=max_order + 1, active=True,
     ))
     db.session.commit()
@@ -340,6 +368,7 @@ def edit_habit(habit_id):
         track_mode = request.form.get("track_mode", "toggle").strip()
         unit = request.form.get("unit", "").strip()
         daily_target = request.form.get("daily_target", type=float) if track_mode == "amount" else None
+        amount_input_mode = request.form.get("amount_input_mode", "cumulative").strip()
 
         if not name:
             flash("Alışkanlık adı zorunlu.")
@@ -355,6 +384,7 @@ def edit_habit(habit_id):
             weekly_target = min(7, weekly_target)
         if track_mode != "amount":
             unit = ""
+            amount_input_mode = "cumulative"
 
         habit.name = name
         habit.why = why or None
@@ -365,6 +395,7 @@ def edit_habit(habit_id):
         habit.track_mode = track_mode
         habit.unit = unit or None
         habit.daily_target = daily_target
+        habit.amount_input_mode = amount_input_mode
         db.session.commit()
         flash(f"'{habit.name}' güncellendi.")
         return redirect(url_for("aliskanlik.manage_habits"))

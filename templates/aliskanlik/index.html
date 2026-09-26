@@ -77,6 +77,11 @@
                         <button type="submit" name="amount" value="200" class="btn btn-outline-secondary btn-sm">+200 ml</button>
                         <button type="submit" name="amount" value="250" class="btn btn-outline-secondary btn-sm">+250 ml</button>
                         <button type="submit" name="amount" value="500" class="btn btn-outline-secondary btn-sm">+500 ml</button>
+                    {% elif row.habit.amount_input_mode == 'latest' %}
+                        <input type="number" name="amount" class="form-control form-control-sm font-mono" style="width: 110px;"
+                               placeholder="{{ row.habit.unit }}" min="0" step="1"
+                               value="{{ (row.today_amount_raw | int) if row.today_amount_raw else '' }}" required>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Güncelle</button>
                     {% else %}
                         <input type="number" name="amount" class="form-control form-control-sm font-mono" style="width: 110px;" placeholder="{{ row.habit.unit }}" min="0" step="1" required>
                         <button type="submit" class="btn btn-outline-primary btn-sm">Ekle</button>
