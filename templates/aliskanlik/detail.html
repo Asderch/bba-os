@@ -2,17 +2,20 @@
 {% from "_icons.html" import icon, impact_meter %}
 {% block title %}{{ habit.name }}{% endblock %}
 
-{% block page_context %}<div class="bba-page-context">{{ habit.name }} {{ impact_meter(habit.impact) }}</div>{% endblock %}
+{% block page_context %}<div class="bba-page-context">{{ habit.name }} {% if habit.track_mode != 'counter' %}{{ impact_meter(habit.impact) }}{% endif %}</div>{% endblock %}
 
 {% block inner %}
 <div class="page-header mt-3 mb-3">
     {% if habit.target %}<span class="bba-habit-target">{{ habit.target }}</span>{% endif %}
     {% if habit.why %}<p class="text-secondary mb-0">{{ habit.why }}</p>{% endif %}
+    {% if habit.track_mode != 'counter' %}
     <p class="text-secondary small">
         {{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}
     </p>
+    {% endif %}
 </div>
 
+{% if habit.track_mode != 'counter' %}
 <div class="row row-cards mb-3">
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm"><div class="card-body text-center">
@@ -53,6 +56,7 @@
         <div class="text-secondary small mt-2">Her kutu bir gün — bakır: tamamlandı, gri: yapılmadı.</div>
     </div>
 </div>
+{% endif %}
 
 {% if habit.track_mode == 'note' and recent_logs %}
 <div class="card mb-3">
@@ -66,7 +70,7 @@
         {% endfor %}
     </div>
 </div>
-{% elif habit.track_mode == 'amount' and recent_logs %}
+{% elif habit.track_mode in ('amount', 'counter') and recent_logs %}
 <div class="card mb-3">
     <div class="card-header"><h3 class="card-title">Geçmiş Girişler</h3></div>
     <div class="list-group list-group-flush">

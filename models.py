@@ -253,12 +253,15 @@ DEFAULT_HABITS = [
 class Habit(db.Model):
     """Süre hedefi olmayan, işaretleme + etki puanıyla takip edilen alışkanlık.
 
-    track_mode üç şekilde işlenebilir:
+    track_mode dört şekilde işlenebilir:
     - "toggle" (varsayılan): sadece yapıldı/yapılmadı (mevcut davranış).
     - "amount": günlük sayısal bir miktar birikir (ör. su ml, adım sayısı);
       gün toplamı `daily_target`'a ulaşınca otomatik "yapıldı" sayılır.
     - "note": günde bir serbest metin notu (ör. "bugün ne öğrendin?");
       not kaydedilince "yapıldı" sayılır.
+    - "counter": azaltılması istenen bir şeyin saf sayımı (ör. sigara —
+      kaç dal/paket). Hiçbir hedef, "yapıldı" ya da puan mantığı yok;
+      Life Score'a ve günlük tamamlanma sayısına hiç dahil edilmez.
     Gerçek girişler HabitLog'da tutulur, HabitCompletion "yapıldı" durumunun
     tek kaynağı olmaya devam eder (streak/Life Score hesapları değişmesin diye).
     """

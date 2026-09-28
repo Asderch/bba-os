@@ -32,6 +32,15 @@
                     <input type="text" name="target" class="form-control" placeholder="ör. 2.5 litre, 23:00 – 07:00">
                 </div>
                 <div class="col-md-4">
+                    <label class="form-label">Nasıl takip edilsin?</label>
+                    <select name="track_mode" class="form-select" id="track-mode-select" onchange="toggleAmountFields()">
+                        <option value="toggle">Basit tik (yapıldı/yapılmadı)</option>
+                        <option value="amount">Miktar + hedef (ör. litre, adım)</option>
+                        <option value="note">Not (o günü serbest metinle anlat)</option>
+                        <option value="counter">Sayaç — sadece takip, puana dahil değil (ör. sigara)</option>
+                    </select>
+                </div>
+                <div class="col-md-4" id="impact-field">
                     <label class="form-label">Etki puanı</label>
                     <select name="impact" class="form-select">
                         <option value="1">1 — düşük</option>
@@ -41,7 +50,7 @@
                         <option value="5">5 — yüksek</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" id="frequency-field">
                     <label class="form-label">Sıklık</label>
                     <select name="frequency_type" class="form-select" id="freq-select" onchange="toggleWeeklyTarget()">
                         <option value="gunluk">Her gün</option>
@@ -52,17 +61,9 @@
                     <label class="form-label">Haftalık hedef (kaç kez)</label>
                     <input type="number" name="weekly_target" class="form-control font-mono" min="1" max="7" value="3">
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Nasıl takip edilsin?</label>
-                    <select name="track_mode" class="form-select" id="track-mode-select" onchange="toggleAmountFields()">
-                        <option value="toggle">Basit tik (yapıldı/yapılmadı)</option>
-                        <option value="amount">Miktar (ör. litre, adım)</option>
-                        <option value="note">Not (o günü serbest metinle anlat)</option>
-                    </select>
-                </div>
                 <div class="col-md-4 d-none" id="unit-field">
                     <label class="form-label">Birim</label>
-                    <input type="text" name="unit" class="form-control" placeholder="ör. ml, adım, sayfa">
+                    <input type="text" name="unit" class="form-control" placeholder="ör. ml, adım, dal">
                 </div>
                 <div class="col-md-4 d-none" id="daily-target-field">
                     <label class="form-label">Günlük sayısal hedef</label>
@@ -92,8 +93,12 @@
                 <div class="fw-medium">
                     {{ habit.name }}
                     {% if habit.target %}<span class="bba-habit-target">{{ habit.target }}</span>{% endif %}
-                    {{ impact_meter(habit.impact) }}
-                    <span class="badge bg-secondary-lt">{{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}</span>
+                    {% if habit.track_mode == 'counter' %}
+                        <span class="badge bg-secondary-lt">Sayaç</span>
+                    {% else %}
+                        {{ impact_meter(habit.impact) }}
+                        <span class="badge bg-secondary-lt">{{ 'Her gün' if habit.frequency_type == 'gunluk' else 'Haftada ' ~ habit.weekly_target ~ ' kez' }}</span>
+                    {% endif %}
                 </div>
                 {% if habit.why %}<div class="text-secondary small">{{ habit.why }}</div>{% endif %}
             </a>
@@ -148,15 +153,17 @@ function toggleAmountFields() {
     const unitField = document.getElementById('unit-field');
     const targetField = document.getElementById('daily-target-field');
     const inputModeField = document.getElementById('amount-input-mode-field');
-    if (mode === 'amount') {
-        unitField.classList.remove('d-none');
-        targetField.classList.remove('d-none');
-        inputModeField.classList.remove('d-none');
-    } else {
-        unitField.classList.add('d-none');
-        targetField.classList.add('d-none');
-        inputModeField.classList.add('d-none');
-    }
+    const impactField = document.getElementById('impact-field');
+    const frequencyField = document.getElementById('frequency-field');
+    const weeklyTargetField = document.getElementById('weekly-target-field');
+
+    unitField.classList.toggle('d-none', mode !== 'amount' && mode !== 'counter');
+    targetField.classList.toggle('d-none', mode !== 'amount');
+    inputModeField.classList.toggle('d-none', mode !== 'amount');
+    impactField.classList.toggle('d-none', mode === 'counter');
+    frequencyField.classList.toggle('d-none', mode === 'counter');
+    if (mode === 'counter') weeklyTargetField.classList.add('d-none');
+    else if (document.getElementById('freq-select').value === 'haftalik') weeklyTargetField.classList.remove('d-none');
 }
 </script>
 {% endblock %}

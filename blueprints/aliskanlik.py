@@ -139,11 +139,18 @@ def index():
     rows = []
     today_puan = 0
     max_puan = 0
+    trackable_count = 0
+    done_count = 0
     for h in habits:
         done = h.id in todays_completions
-        max_puan += h.impact
-        if done:
-            today_puan += h.impact
+        # "counter" (ör. sigara) puana/tamamlanma sayısına hiç dahil değil —
+        # azaltılması istenen bir şey, "yapıldı" kavramı burada anlamsız.
+        if h.track_mode != "counter":
+            trackable_count += 1
+            max_puan += h.impact
+            if done:
+                today_puan += h.impact
+                done_count += 1
         row = {
             "habit": h,
             "done": done,
@@ -159,13 +166,14 @@ def index():
             row["progress_pct"] = min(100, round(total / h.daily_target * 100)) if h.daily_target else 0
         elif h.track_mode == "note":
             row["today_note"] = today_note_by_habit.get(h.id)
+        elif h.track_mode == "counter":
+            row["today_amount_raw"] = today_amount_by_habit.get(h.id, 0)
+            row["today_amount_display"] = _format_amount(row["today_amount_raw"], h.unit)
         rows.append(row)
-
-    done_count = sum(1 for r in rows if r["done"])
 
     return render_template(
         "aliskanlik/index.html",
-        rows=rows, done_count=done_count, today=today,
+        rows=rows, done_count=done_count, trackable_count=trackable_count, today=today,
         weekday_name=WEEKDAYS[today.weekday()],
         today_puan=today_puan, max_puan=max_puan,
     )
@@ -204,6 +212,16 @@ def log_amount(habit_id):
         flash("Geçerli bir miktar gir.")
         return redirect(url_for("aliskanlik.index"))
 
+    if habit.track_mode == "counter":
+        # "counter" (ör. sigara): sadece birikimli sayım, hiçbir hedef/
+        # tamamlanma mantığı yok — azaltılması istenen bir şey ödüllendirilmez.
+        if amount <= 0:
+            flash("Geçerli bir miktar gir.")
+            return redirect(url_for("aliskanlik.index"))
+        db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
+        db.session.commit()
+        return redirect(url_for("aliskanlik.index"))
+
     if habit.amount_input_mode == "latest":
         existing_log = HabitLog.query.filter_by(habit_id=habit.id, log_date=today).first()
         if existing_log:
@@ -231,6 +249,33 @@ def log_amount(habit_id):
         # cumulative modda (su) kazanılan tamamlanma asla geri alınmaz.
         db.session.delete(already_done)
         db.session.commit()
+    return redirect(url_for("aliskanlik.index"))
+
+
+@bp.route("/habit/<int:habit_id>/undo-last-log", methods=["POST"])
+def undo_last_log(habit_id):
+    """Bugün için en son eklenen birikimli girişi siler (yanlışlıkla
+    tıklanan bir '+1 dal' ya da '+500 ml' gibi hataları düzeltmek için).
+    'latest' modda anlamı yok — kullanıcı zaten değeri direkt düzeltiyor."""
+    habit = Habit.query.get_or_404(habit_id)
+    today = today_tr()
+    last_log = (
+        HabitLog.query.filter_by(habit_id=habit.id, log_date=today)
+        .filter(HabitLog.amount.isnot(None))
+        .order_by(HabitLog.id.desc())
+        .first()
+    )
+    if last_log:
+        db.session.delete(last_log)
+        db.session.commit()
+
+        total = db.session.query(db.func.sum(HabitLog.amount)).filter(
+            HabitLog.habit_id == habit.id, HabitLog.log_date == today,
+        ).scalar() or 0
+        already_done = HabitCompletion.query.filter_by(habit_id=habit.id, completion_date=today).first()
+        if habit.daily_target and total < habit.daily_target and already_done:
+            db.session.delete(already_done)
+            db.session.commit()
     return redirect(url_for("aliskanlik.index"))
 
 
@@ -285,7 +330,7 @@ def habit_detail(habit_id):
             .order_by(HabitLog.log_date.desc())
             .limit(14).all()
         )
-    elif habit.track_mode == "amount":
+    elif habit.track_mode in ("amount", "counter"):
         daily_totals = {}
         logs = (
             HabitLog.query.filter_by(habit_id=habit.id)
@@ -338,13 +383,21 @@ def add_habit():
     if frequency_type == "haftalik":
         weekly_target = weekly_target if (weekly_target and weekly_target > 0) else 3
         weekly_target = min(7, weekly_target)
-    if track_mode != "amount":
+    if track_mode not in ("amount", "counter"):
         unit = ""
+        amount_input_mode = "cumulative"
+    if track_mode == "counter":
+        # "counter" puana/tamamlanmaya hiç dahil değil — etki puanı ve
+        # haftalık hedef gibi alanların bir anlamı yok.
+        frequency_type = "gunluk"
+        weekly_target = None
+        daily_target = None
         amount_input_mode = "cumulative"
 
     max_order = db.session.query(db.func.max(Habit.sort_order)).scalar() or 0
     db.session.add(Habit(
-        name=name, why=why or None, target=target or None, impact=max(1, min(5, impact)),
+        name=name, why=why or None, target=target or None,
+        impact=0 if track_mode == "counter" else max(1, min(5, impact)),
         frequency_type=frequency_type, weekly_target=weekly_target,
         track_mode=track_mode, unit=unit or None, daily_target=daily_target,
         amount_input_mode=amount_input_mode,
@@ -382,14 +435,19 @@ def edit_habit(habit_id):
         if frequency_type == "haftalik":
             weekly_target = weekly_target if (weekly_target and weekly_target > 0) else 3
             weekly_target = min(7, weekly_target)
-        if track_mode != "amount":
+        if track_mode not in ("amount", "counter"):
             unit = ""
+            amount_input_mode = "cumulative"
+        if track_mode == "counter":
+            frequency_type = "gunluk"
+            weekly_target = None
+            daily_target = None
             amount_input_mode = "cumulative"
 
         habit.name = name
         habit.why = why or None
         habit.target = target or None
-        habit.impact = max(1, min(5, impact))
+        habit.impact = 0 if track_mode == "counter" else max(1, min(5, impact))
         habit.frequency_type = frequency_type
         habit.weekly_target = weekly_target
         habit.track_mode = track_mode
