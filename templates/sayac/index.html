@@ -4,6 +4,13 @@
 {% block page_context %}<div class="bba-page-context">{{ weekday_name }}, {{ today.strftime('%d.%m.%Y') }}</div>{% endblock %}
 
 {% block inner %}
+<div class="page-header mt-3 mb-3">
+    <div class="bba-label mb-1">BUGÜN</div>
+    <p class="text-secondary mb-0">
+        {% if rows %}{{ rows|length }} sayaç takip ediliyor{% else %}Henüz sayaç eklemedin.{% endif %}
+    </p>
+</div>
+
 {% if not rows %}
     <div class="card">
         <div class="card-body text-center text-secondary">

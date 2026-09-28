@@ -185,3 +185,72 @@ def test_seed_defaults_assigns_track_modes(client, flask_app):
         assert adim.amount_input_mode == "latest"
         assert ogrenme.track_mode == "note"
         assert toparla.track_mode == "toggle"
+
+
+def test_log_amount_rejects_nan_and_infinity_cumulative(client, flask_app):
+    """NaN/Infinity bir float() olarak geçerli sayılır ve eski `<= 0` kontrolünü
+    atlatırdı (nan <= 0 False'tur) — kaydedilirse sonraki her render'da
+    _format_amount()'un int() çağrısı çökerdi. safe_positive_float bunu reddetmeli."""
+    import app as appmod
+    from models import HabitLog
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(amount_input_mode="cumulative")
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "nan"})
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "inf"})
+    with appmod.app.app_context():
+        assert HabitLog.query.filter_by(habit_id=habit_id).count() == 0
+
+    html = client.get("/aliskanlik/").get_data(as_text=True)
+    assert html  # sayfa 500 vermeden render edildi
+
+
+def test_log_amount_rejects_nan_and_infinity_latest(client, flask_app):
+    import app as appmod
+    from models import HabitLog
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(unit="adım", amount_input_mode="latest")
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "nan"})
+    with appmod.app.app_context():
+        assert HabitLog.query.filter_by(habit_id=habit_id).count() == 0
+
+
+def test_add_habit_rejects_nan_daily_target(client, flask_app):
+    """daily_target hiç doğrulanmıyordu — NaN girilirse index sayfasındaki
+    round(total / daily_target * 100) her render'da çökerdi."""
+    import app as appmod
+    from models import Habit
+
+    client.post("/aliskanlik/habit/add", data={
+        "name": "Su", "track_mode": "amount", "unit": "ml", "daily_target": "nan",
+    })
+    with appmod.app.app_context():
+        habit = Habit.query.filter_by(name="Su").first()
+        assert habit is not None
+        assert habit.daily_target is None
+
+    html = client.get("/aliskanlik/").get_data(as_text=True)
+    assert html  # sayfa 500 vermeden render edildi
+
+
+def test_delete_habit_refuses_while_active(client, flask_app):
+    import app as appmod
+    from models import Habit
+
+    with appmod.app.app_context():
+        habit = _seed_note_habit()
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/delete")
+    with appmod.app.app_context():
+        assert Habit.query.get(habit_id) is not None
+
+    client.post(f"/aliskanlik/habit/{habit_id}/archive")
+    client.post(f"/aliskanlik/habit/{habit_id}/delete")
+    with appmod.app.app_context():
+        assert Habit.query.get(habit_id) is None

@@ -14,7 +14,7 @@ from datetime import timedelta
 from flask import Blueprint, render_template
 
 import dashboard_logic as dash
-from common import TR_WEEKDAYS, today_tr
+from common import TR_WEEKDAYS, today_tr, week_bounds
 from salary import calculate_salary
 from settings import get_gelir_gizli
 from models import DailyTask, DailyTaskCompletion, Habit, HabitCompletion
@@ -29,11 +29,6 @@ def inject_module_info():
         "module_index_endpoint": "analizler.index",
         "module_brand_name": "Analizler",
     }
-
-
-def _week_bounds(today):
-    week_start = today - timedelta(days=today.weekday())
-    return week_start, week_start + timedelta(days=6)
 
 
 def _is_takip_weekly(today, week_start, week_days, non_work_days):
@@ -95,7 +90,7 @@ def _aliskanlik_weekly(week_start, week_end):
 @bp.route("/")
 def index():
     today = today_tr()
-    week_start, week_end = _week_bounds(today)
+    week_start, week_end = week_bounds(today)
     week_days = [week_start + timedelta(days=i) for i in range(7)]
     gelir_gizli = get_gelir_gizli()
 

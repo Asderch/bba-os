@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
-from common import today_tr, TR_WEEKDAYS_SHORT
+from common import today_tr, TR_WEEKDAYS_SHORT, week_bounds, safe_positive_float, safe_nonnegative_float
 from models import Habit, HabitCompletion, HabitLog, WEEKDAYS, DEFAULT_HABITS
 
 bp = Blueprint("aliskanlik", __name__, url_prefix="/aliskanlik")
@@ -16,11 +16,6 @@ def inject_module_info():
         "module_index_endpoint": "aliskanlik.index",
         "module_brand_name": "Alışkanlık Takip",
     }
-
-
-def _week_bounds(today):
-    week_start = today - timedelta(days=today.weekday())
-    return week_start, week_start + timedelta(days=6)
 
 
 def _calculate_streak(habit_id):
@@ -114,7 +109,7 @@ def _format_amount(value, unit):
 @bp.route("/")
 def index():
     today = today_tr()
-    week_start, week_end = _week_bounds(today)
+    week_start, week_end = week_bounds(today)
 
     habits = Habit.query.filter_by(active=True).order_by(Habit.sort_order).all()
     todays_completions = {c.habit_id for c in HabitCompletion.query.filter_by(completion_date=today).all()}
@@ -198,9 +193,14 @@ def log_amount(habit_id):
     """
     habit = Habit.query.get_or_404(habit_id)
     today = today_tr()
-    amount = request.form.get("amount", type=float)
 
-    if amount is None or amount < 0:
+    if habit.amount_input_mode == "latest":
+        # "latest" modda 0 geçerli bir düzeltme olabilir (ör. adımı sıfırlamak).
+        amount = safe_nonnegative_float(request.form.get("amount"))
+    else:
+        amount = safe_positive_float(request.form.get("amount"))
+
+    if amount is None:
         flash("Geçerli bir miktar gir.")
         return redirect(url_for("aliskanlik.index"))
 
@@ -212,9 +212,6 @@ def log_amount(habit_id):
             db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
         db.session.commit()
     else:
-        if amount <= 0:
-            flash("Geçerli bir miktar gir.")
-            return redirect(url_for("aliskanlik.index"))
         db.session.add(HabitLog(habit_id=habit.id, log_date=today, amount=amount))
         db.session.commit()
 
@@ -326,7 +323,7 @@ def add_habit():
     weekly_target = request.form.get("weekly_target", type=int) if frequency_type == "haftalik" else None
     track_mode = request.form.get("track_mode", "toggle").strip()
     unit = request.form.get("unit", "").strip()
-    daily_target = request.form.get("daily_target", type=float) if track_mode == "amount" else None
+    daily_target = safe_positive_float(request.form.get("daily_target")) if track_mode == "amount" else None
     amount_input_mode = request.form.get("amount_input_mode", "cumulative").strip()
 
     if not name:
@@ -367,7 +364,7 @@ def edit_habit(habit_id):
         weekly_target = request.form.get("weekly_target", type=int) if frequency_type == "haftalik" else None
         track_mode = request.form.get("track_mode", "toggle").strip()
         unit = request.form.get("unit", "").strip()
-        daily_target = request.form.get("daily_target", type=float) if track_mode == "amount" else None
+        daily_target = safe_positive_float(request.form.get("daily_target")) if track_mode == "amount" else None
         amount_input_mode = request.form.get("amount_input_mode", "cumulative").strip()
 
         if not name:
@@ -425,6 +422,9 @@ def unarchive_habit(habit_id):
 def delete_habit(habit_id):
     """Kalıcı silme — sadece arşivlenmiş alışkanlıklar için (geçmişiyle birlikte gider)."""
     habit = Habit.query.get_or_404(habit_id)
+    if habit.active:
+        flash("Önce arşivlemeden kalıcı silinemez.")
+        return redirect(url_for("aliskanlik.manage_habits"))
     db.session.delete(habit)
     db.session.commit()
     return redirect(url_for("aliskanlik.manage_habits"))
@@ -450,7 +450,7 @@ def seed_defaults():
 @bp.route("/istatistik")
 def stats():
     today = today_tr()
-    week_start, week_end = _week_bounds(today)
+    week_start, week_end = week_bounds(today)
     week_days = [week_start + timedelta(days=i) for i in range(7)]
 
     habits = Habit.query.filter_by(active=True).order_by(Habit.sort_order).all()

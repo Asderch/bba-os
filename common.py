@@ -103,6 +103,24 @@ def safe_positive_float(raw):
     return value
 
 
+def safe_nonnegative_float(raw):
+    """'12,50' -> 12.5. Geçersiz / inf / nan / < 0 ise None döner (0 kabul edilir).
+    "Güncel değer" girişleri için (ör. adım sayısını 0'a düzeltmek geçerli)."""
+    try:
+        value = float(str(raw).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value) or value < 0:
+        return None
+    return value
+
+
+def week_bounds(day):
+    """(haftanın Pazartesi'si, haftanın Pazar'ı) — ikisi de date."""
+    week_start = day - timedelta(days=day.weekday())
+    return week_start, week_start + timedelta(days=6)
+
+
 def valid_hex_color(raw, fallback):
     """`#rrggbb` değilse fallback döner (şablonda satır içi style'a giriyor —
     CSS enjeksiyonuna karşı)."""

@@ -52,8 +52,48 @@ def test_log_amount_rejects_invalid(client, flask_app):
 
     client.post(f"/sayac/{counter_id}/ekle-giris", data={"amount": "0"})
     client.post(f"/sayac/{counter_id}/ekle-giris", data={})
+    client.post(f"/sayac/{counter_id}/ekle-giris", data={"amount": "-5"})
+    client.post(f"/sayac/{counter_id}/ekle-giris", data={"amount": "nan"})
+    client.post(f"/sayac/{counter_id}/ekle-giris", data={"amount": "inf"})
     with appmod.app.app_context():
         assert CounterLog.query.filter_by(counter_id=counter_id).count() == 0
+
+
+def test_dynamic_routes_404_for_unknown_counter(client, flask_app):
+    assert client.post("/sayac/9999/ekle-giris", data={"amount": "1"}).status_code == 404
+    assert client.post("/sayac/9999/geri-al").status_code == 404
+    assert client.get("/sayac/9999/duzenle").status_code == 404
+    assert client.post("/sayac/9999/duzenle", data={"name": "X"}).status_code == 404
+    assert client.post("/sayac/9999/arsivle").status_code == 404
+    assert client.post("/sayac/9999/aktifle").status_code == 404
+    assert client.post("/sayac/9999/sil").status_code == 404
+
+
+def test_undo_last_log_is_noop_without_any_logs(client, flask_app):
+    import app as appmod
+    from models import CounterLog
+
+    with appmod.app.app_context():
+        counter = _seed_counter()
+        counter_id = counter.id
+
+    resp = client.post(f"/sayac/{counter_id}/geri-al")
+    assert resp.status_code == 302
+    with appmod.app.app_context():
+        assert CounterLog.query.filter_by(counter_id=counter_id).count() == 0
+
+
+def test_delete_counter_refuses_while_active(client, flask_app):
+    import app as appmod
+    from models import Counter
+
+    with appmod.app.app_context():
+        counter = _seed_counter()
+        counter_id = counter.id
+
+    client.post(f"/sayac/{counter_id}/sil")
+    with appmod.app.app_context():
+        assert Counter.query.get(counter_id) is not None
 
 
 def test_undo_last_log(client, flask_app):

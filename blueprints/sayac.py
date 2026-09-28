@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
-from common import today_tr, TR_WEEKDAYS_SHORT
+from common import today_tr, TR_WEEKDAYS_SHORT, week_bounds, safe_positive_float
 from models import Counter, CounterLog, WEEKDAYS
 
 bp = Blueprint("sayac", __name__, url_prefix="/sayac")
@@ -18,11 +18,6 @@ def inject_module_info():
     }
 
 
-def _week_bounds(today):
-    week_start = today - timedelta(days=today.weekday())
-    return week_start, week_start + timedelta(days=6)
-
-
 def _format_amount(value, unit):
     value = value or 0
     text = f"{int(value):,}".replace(",", ".")
@@ -33,7 +28,7 @@ def _format_amount(value, unit):
 @bp.route("/")
 def index():
     today = today_tr()
-    week_start, week_end = _week_bounds(today)
+    week_start, week_end = week_bounds(today)
 
     counters = Counter.query.filter_by(active=True).order_by(Counter.sort_order).all()
 
@@ -68,9 +63,9 @@ def log_amount(counter_id):
     tek amacı toplamı görmek, bir hedefe ulaşma/tamamlanma kavramı yok)."""
     counter = Counter.query.get_or_404(counter_id)
     today = today_tr()
-    amount = request.form.get("amount", type=float)
+    amount = safe_positive_float(request.form.get("amount"))
 
-    if not amount or amount <= 0:
+    if amount is None:
         flash("Geçerli bir miktar gir.")
         return redirect(url_for("sayac.index"))
 
@@ -172,6 +167,9 @@ def unarchive_counter(counter_id):
 def delete_counter(counter_id):
     """Kalıcı silme — sadece arşivlenmiş sayaçlar için (geçmişiyle birlikte gider)."""
     counter = Counter.query.get_or_404(counter_id)
+    if counter.active:
+        flash("Önce arşivlemeden kalıcı silinemez.")
+        return redirect(url_for("sayac.manage_counters"))
     db.session.delete(counter)
     db.session.commit()
     return redirect(url_for("sayac.manage_counters"))
@@ -181,7 +179,7 @@ def delete_counter(counter_id):
 @bp.route("/istatistik")
 def stats():
     today = today_tr()
-    week_start, week_end = _week_bounds(today)
+    week_start, week_end = week_bounds(today)
     week_days = [week_start + timedelta(days=i) for i in range(7)]
 
     counters = Counter.query.filter_by(active=True).order_by(Counter.sort_order).all()
