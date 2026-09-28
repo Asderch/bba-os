@@ -27,15 +27,6 @@ def _seed_note_habit():
     return habit
 
 
-def _seed_counter_habit(unit="dal"):
-    from extensions import db
-    from models import Habit
-    habit = Habit(name="Sigara", impact=0, frequency_type="gunluk", track_mode="counter", unit=unit)
-    db.session.add(habit)
-    db.session.commit()
-    return habit
-
-
 def test_log_amount_accumulates_and_auto_completes_at_target(client, flask_app):
     import app as appmod
     from models import Habit, HabitCompletion, HabitLog
@@ -194,84 +185,3 @@ def test_seed_defaults_assigns_track_modes(client, flask_app):
         assert adim.amount_input_mode == "latest"
         assert ogrenme.track_mode == "note"
         assert toparla.track_mode == "toggle"
-
-
-def test_counter_habit_never_gets_completion_even_past_target(client, flask_app):
-    """'counter' modda (ör. sigara) ne kadar eklenirse eklensin HİÇBİR ZAMAN
-    'yapıldı' işaretlenmemeli — azaltılması istenen bir şey ödüllendirilmez."""
-    import app as appmod
-    from models import HabitCompletion, HabitLog
-
-    with appmod.app.app_context():
-        habit = _seed_counter_habit()
-        habit_id = habit.id
-
-    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "1"})
-    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "20"})
-    with appmod.app.app_context():
-        assert HabitCompletion.query.filter_by(habit_id=habit_id).count() == 0
-        logs = HabitLog.query.filter_by(habit_id=habit_id).all()
-        assert sum(l.amount for l in logs) == 21
-
-
-def test_counter_habit_excluded_from_puan_and_trackable_count(client, flask_app):
-    """Sayaç alışkanlığı Life Score/Puan hesabına ve 'X / Y tamamlandı'
-    başlığındaki toplam sayıya hiç dahil olmamalı."""
-    import app as appmod
-    from models import Habit
-
-    with appmod.app.app_context():
-        from extensions import db
-        toggle_habit = Habit(name="Kitap oku", impact=3, frequency_type="gunluk", track_mode="toggle")
-        db.session.add(toggle_habit)
-        db.session.commit()
-        counter_habit = _seed_counter_habit()
-        counter_habit_id = counter_habit.id
-
-    html_before = client.get("/aliskanlik/").get_data(as_text=True)
-    assert "0 / 1 alışkanlık tamamlandı" in html_before
-    assert "3" in html_before  # max_puan sadece toggle habitin impact'i (3), sayaç dahil değil
-
-    client.post(f"/aliskanlik/habit/{counter_habit_id}/log-amount", data={"amount": "5"})
-    html_after = client.get("/aliskanlik/").get_data(as_text=True)
-    assert "0 / 1 alışkanlık tamamlandı" in html_after
-    assert "Bugün 5 dal" in html_after
-
-
-def test_undo_last_log_removes_most_recent_entry(client, flask_app):
-    import app as appmod
-    from models import HabitLog
-
-    with appmod.app.app_context():
-        habit = _seed_counter_habit()
-        habit_id = habit.id
-
-    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "1"})
-    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "20"})
-    with appmod.app.app_context():
-        assert HabitLog.query.filter_by(habit_id=habit_id).count() == 2
-
-    client.post(f"/aliskanlik/habit/{habit_id}/undo-last-log")
-    with appmod.app.app_context():
-        logs = HabitLog.query.filter_by(habit_id=habit_id).all()
-        assert len(logs) == 1
-        assert logs[0].amount == 1
-
-
-def test_undo_last_log_also_undoes_amount_completion(client, flask_app):
-    """Birikimli 'amount' modda (ör. su) yanlışlıkla eklenen bir miktarı geri
-    alınca, o eklemeyle kazanılmış bir 'yapıldı' da geri alınmalı."""
-    import app as appmod
-    from models import HabitCompletion
-
-    with appmod.app.app_context():
-        habit = _seed_amount_habit(daily_target=500, amount_input_mode="cumulative")
-        habit_id = habit.id
-
-    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "500"})
-    with appmod.app.app_context():
-        assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is not None
-
-    client.post(f"/aliskanlik/habit/{habit_id}/undo-last-log")
-    with appmod.app.app_context():
-        assert HabitCompletion.query.filter_by(habit_id=habit_id, completion_date=_today()).first() is None

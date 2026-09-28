@@ -10,7 +10,7 @@
         <div class="col">
             <div class="bba-label mb-1">BUGÜN</div>
             <p class="text-secondary mb-0">
-                {% if rows %}{{ done_count }} / {{ trackable_count }} alışkanlık tamamlandı{% else %}Henüz alışkanlık eklemedin.{% endif %}
+                {% if rows %}{{ done_count }} / {{ rows|length }} alışkanlık tamamlandı{% else %}Henüz alışkanlık eklemedin.{% endif %}
             </p>
         </div>
         {% if rows %}
@@ -43,14 +43,11 @@
                         <div class="fw-medium {{ 'text-decoration-line-through text-secondary' if row.done }}">
                             {{ row.habit.name }}
                             {% if row.habit.target %}<span class="bba-habit-target">{{ row.habit.target }}</span>{% endif %}
-                            {% if row.habit.track_mode != 'counter' %}{{ impact_meter(row.habit.impact) }}{% endif %}
+                            {{ impact_meter(row.habit.impact) }}
                         </div>
                     </a>
                     {% if row.habit.why %}<div class="text-secondary small">{{ row.habit.why }}</div>{% endif %}
                 </div>
-                {% if row.habit.track_mode == 'counter' %}
-                <span class="badge bba-tag-neutral font-mono flex-shrink-0">Bugün {{ row.today_amount_display }}</span>
-                {% else %}
                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
                     {% if row.streak > 0 %}<span class="badge bba-tag-streak font-mono">{{ icon('flame', 14) }} {{ row.streak }}</span>{% endif %}
                     <span class="badge {{ 'bba-tag-positive' if row.week_count >= row.week_target else 'bba-tag-neutral' }} font-mono">
@@ -66,7 +63,6 @@
                 {% else %}
                 <span class="daily-check {{ 'daily-check-done' if row.done }}" aria-hidden="true">{{ '✓' if row.done }}</span>
                 {% endif %}
-                {% endif %}
             </div>
 
             {% if row.habit.track_mode == 'amount' %}
@@ -76,7 +72,7 @@
                     <span class="text-secondary small">%{{ row.progress_pct }}</span>
                 </div>
                 <div class="bba-goal-bar mb-2"><div class="bba-goal-fill" style="width: {{ row.progress_pct }}%;"></div></div>
-                <form method="POST" action="{{ url_for('aliskanlik.log_amount', habit_id=row.habit.id) }}" class="d-flex gap-2 flex-wrap align-items-center">
+                <form method="POST" action="{{ url_for('aliskanlik.log_amount', habit_id=row.habit.id) }}" class="d-flex gap-2 flex-wrap">
                     {% if row.habit.unit == 'ml' %}
                         <button type="submit" name="amount" value="200" class="btn btn-outline-secondary btn-sm">+200 ml</button>
                         <button type="submit" name="amount" value="250" class="btn btn-outline-secondary btn-sm">+250 ml</button>
@@ -92,34 +88,12 @@
                         <button type="submit" class="btn btn-outline-primary btn-sm">Ekle</button>
                     {% endif %}
                 </form>
-                {% if row.habit.amount_input_mode == 'cumulative' and row.today_amount_raw %}
-                <form method="POST" action="{{ url_for('aliskanlik.undo_last_log', habit_id=row.habit.id) }}" class="mt-1">
-                    <button type="submit" class="btn btn-link btn-sm text-secondary p-0">Son girişi geri al</button>
-                </form>
-                {% endif %}
             </div>
             {% elif row.habit.track_mode == 'note' %}
             <form method="POST" action="{{ url_for('aliskanlik.log_note', habit_id=row.habit.id) }}" class="mt-2 d-flex gap-2">
                 <input type="text" name="note" class="form-control form-control-sm flex-fill" style="min-width: 0;" placeholder="Bugün ne yaptın?" value="{{ row.today_note or '' }}">
                 <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">Kaydet</button>
             </form>
-            {% elif row.habit.track_mode == 'counter' %}
-            <div class="bba-habit-log mt-2">
-                <form method="POST" action="{{ url_for('aliskanlik.log_amount', habit_id=row.habit.id) }}" class="d-flex gap-2 flex-wrap">
-                    {% if row.habit.unit == 'dal' %}
-                        <button type="submit" name="amount" value="1" class="btn btn-outline-secondary btn-sm">+1 dal</button>
-                        <button type="submit" name="amount" value="20" class="btn btn-outline-secondary btn-sm">Paket bitti (+20)</button>
-                    {% else %}
-                        <input type="number" name="amount" class="form-control form-control-sm font-mono" style="width: 110px;" placeholder="{{ row.habit.unit }}" min="0" step="1" required>
-                        <button type="submit" class="btn btn-outline-primary btn-sm">Ekle</button>
-                    {% endif %}
-                </form>
-                {% if row.today_amount_raw %}
-                <form method="POST" action="{{ url_for('aliskanlik.undo_last_log', habit_id=row.habit.id) }}" class="mt-1">
-                    <button type="submit" class="btn btn-link btn-sm text-secondary p-0">Son girişi geri al</button>
-                </form>
-                {% endif %}
-            </div>
             {% endif %}
         </div>
         {% endfor %}

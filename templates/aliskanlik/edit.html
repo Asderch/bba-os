@@ -22,15 +22,6 @@
                     <input type="text" name="target" class="form-control" placeholder="ör. 2.5 litre, 23:00 – 07:00" value="{{ habit.target or '' }}">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Nasıl takip edilsin?</label>
-                    <select name="track_mode" class="form-select" id="track-mode-select" onchange="toggleAmountFields()">
-                        <option value="toggle" {{ 'selected' if habit.track_mode == 'toggle' }}>Basit tik (yapıldı/yapılmadı)</option>
-                        <option value="amount" {{ 'selected' if habit.track_mode == 'amount' }}>Miktar + hedef (ör. litre, adım)</option>
-                        <option value="note" {{ 'selected' if habit.track_mode == 'note' }}>Not (o günü serbest metinle anlat)</option>
-                        <option value="counter" {{ 'selected' if habit.track_mode == 'counter' }}>Sayaç — sadece takip, puana dahil değil (ör. sigara)</option>
-                    </select>
-                </div>
-                <div class="col-md-4 {{ 'd-none' if habit.track_mode == 'counter' }}" id="impact-field">
                     <label class="form-label">Etki puanı</label>
                     <select name="impact" class="form-select">
                         {% for i in range(1, 6) %}
@@ -38,21 +29,29 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4 {{ 'd-none' if habit.track_mode == 'counter' }}" id="frequency-field">
+                <div class="col-md-4">
                     <label class="form-label">Sıklık</label>
                     <select name="frequency_type" class="form-select" id="freq-select" onchange="toggleWeeklyTarget()">
                         <option value="gunluk" {{ 'selected' if habit.frequency_type == 'gunluk' }}>Her gün</option>
                         <option value="haftalik" {{ 'selected' if habit.frequency_type == 'haftalik' }}>Haftada birkaç kez</option>
                     </select>
                 </div>
-                <div class="col-md-4 {{ 'd-none' if habit.frequency_type != 'haftalik' or habit.track_mode == 'counter' }}" id="weekly-target-field">
+                <div class="col-md-4 {{ 'd-none' if habit.frequency_type != 'haftalik' }}" id="weekly-target-field">
                     <label class="form-label">Haftalık hedef (kaç kez)</label>
                     <input type="number" name="weekly_target" class="form-control font-mono" min="1" max="7"
                            value="{{ habit.weekly_target or 3 }}">
                 </div>
-                <div class="col-md-4 {{ 'd-none' if habit.track_mode not in ('amount', 'counter') }}" id="unit-field">
+                <div class="col-md-4">
+                    <label class="form-label">Nasıl takip edilsin?</label>
+                    <select name="track_mode" class="form-select" id="track-mode-select" onchange="toggleAmountFields()">
+                        <option value="toggle" {{ 'selected' if habit.track_mode == 'toggle' }}>Basit tik (yapıldı/yapılmadı)</option>
+                        <option value="amount" {{ 'selected' if habit.track_mode == 'amount' }}>Miktar (ör. litre, adım)</option>
+                        <option value="note" {{ 'selected' if habit.track_mode == 'note' }}>Not (o günü serbest metinle anlat)</option>
+                    </select>
+                </div>
+                <div class="col-md-4 {{ 'd-none' if habit.track_mode != 'amount' }}" id="unit-field">
                     <label class="form-label">Birim</label>
-                    <input type="text" name="unit" class="form-control" placeholder="ör. ml, adım, dal" value="{{ habit.unit or '' }}">
+                    <input type="text" name="unit" class="form-control" placeholder="ör. ml, adım, sayfa" value="{{ habit.unit or '' }}">
                 </div>
                 <div class="col-md-4 {{ 'd-none' if habit.track_mode != 'amount' }}" id="daily-target-field">
                     <label class="form-label">Günlük sayısal hedef</label>
@@ -87,17 +86,15 @@ function toggleAmountFields() {
     const unitField = document.getElementById('unit-field');
     const targetField = document.getElementById('daily-target-field');
     const inputModeField = document.getElementById('amount-input-mode-field');
-    const impactField = document.getElementById('impact-field');
-    const frequencyField = document.getElementById('frequency-field');
-    const weeklyTargetField = document.getElementById('weekly-target-field');
-
-    unitField.classList.toggle('d-none', mode !== 'amount' && mode !== 'counter');
-    targetField.classList.toggle('d-none', mode !== 'amount');
-    inputModeField.classList.toggle('d-none', mode !== 'amount');
-    impactField.classList.toggle('d-none', mode === 'counter');
-    frequencyField.classList.toggle('d-none', mode === 'counter');
-    if (mode === 'counter') weeklyTargetField.classList.add('d-none');
-    else if (document.getElementById('freq-select').value === 'haftalik') weeklyTargetField.classList.remove('d-none');
+    if (mode === 'amount') {
+        unitField.classList.remove('d-none');
+        targetField.classList.remove('d-none');
+        inputModeField.classList.remove('d-none');
+    } else {
+        unitField.classList.add('d-none');
+        targetField.classList.add('d-none');
+        inputModeField.classList.add('d-none');
+    }
 }
 </script>
 {% endblock %}
