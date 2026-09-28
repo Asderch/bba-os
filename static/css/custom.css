@@ -97,3 +97,8 @@
     padding: 2px 8px; border-radius: var(--radius-pill); white-space: nowrap;
     display: inline-flex; align-items: center;
 }
+
+/* "Toparlanma Fırsatı" bandı — momentum düşüşünde ana ekranda ayrı bir
+   kart. Alarm kırmızısı DEĞİL, diğer içgörü kartlarıyla tutarlı bir
+   bakır vurgu — "fırsat" hissi versin, "hata" hissi değil. */
+.bba-recovery-card { border-left: 3px solid var(--bba-copper); }

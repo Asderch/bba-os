@@ -91,7 +91,10 @@ Bu sayede artık:
       kaç tanesi kaldı)
 - [x] Bütçe + alışkanlık korelasyonu ("harcaman yüksek/düşük günlerde alışkanlık
       performansı nasıl değişiyor") — `insight_finans_aliskanlik_link`
-- [ ] "Kötü gidişat" uyarısı + toparlanma önerisi
+- [x] "Kötü gidişat" uyarısı + toparlanma önerisi (2026-09-28'de uygulandı,
+      "Toparlanma Fırsatı" adıyla — `dashboard_logic.recovery_alert()`,
+      `home.html`'de Hero'nun hemen altında ayrı/bağımsız bir kart; testler
+      `tests/test_dashboard_logic.py`'de)
   - *Değerlendirme (2026-09-11):* 1 Ekim'i beklemeden **şimdi** yapılabilir.
     Kod incelemesi: bu madde `compute_momentum(ctx)`'un zaten ürettiği değeri
     (son 14 gün — önceki 14 gün farkı, yüzde puan) okuyup belirli bir negatif

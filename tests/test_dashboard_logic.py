@@ -368,3 +368,79 @@ def test_momentum_none_when_window_has_too_few_valid_days(flask_app):
         ctx = dash.DashboardContext(today)
         # last_14 penceresinde sadece 3 geçerli gün var (< MIN_MOMENTUM_DAYS=5)
         assert dash.compute_momentum(ctx) is None
+
+
+# ----------------------------------------------------------------------
+# recovery_alert (V4 — "Toparlanma Fırsatı"): momentum belirgin şekilde
+# düşükken ayrı, suçlayıcı olmayan bir bant için veri üretmeli; yeterli
+# veri yoksa veya düşüş eşiğin altında kalmazsa sessiz kalmalı.
+
+def test_recovery_alert_none_without_enough_data(flask_app):
+    import app as appmod
+    import dashboard_logic as dash
+
+    with appmod.app.app_context():
+        ctx = dash.DashboardContext(_today())
+        breakdown = dash.life_score_breakdown(ctx)
+        assert dash.recovery_alert(ctx, breakdown) is None
+
+
+def test_recovery_alert_fires_on_significant_momentum_drop(flask_app):
+    import app as appmod
+    from extensions import db
+    from models import DailyTask, DailyTaskCompletion, Habit, HabitCompletion
+
+    with appmod.app.app_context():
+        import dashboard_logic as dash
+
+        today = _today()
+        start = today - timedelta(days=27)
+        created = datetime.combine(start, datetime.min.time())
+        task = DailyTask(title="T", sort_order=1, created_at=created)
+        habit = Habit(name="H", impact=5, frequency_type="gunluk", active=True, created_at=created)
+        db.session.add_all([task, habit])
+        db.session.commit()
+        # Önceki 14 gün (27-14 gün önce): tam tamamlanmış.
+        # Son 14 gün: hiç tamamlanmamış (böylece momentum belirgin negatif olur).
+        for i in range(14):
+            d = start + timedelta(days=i)
+            db.session.add(DailyTaskCompletion(daily_task_id=task.id, completion_date=d))
+            db.session.add(HabitCompletion(habit_id=habit.id, completion_date=d))
+        db.session.commit()
+
+        ctx = dash.DashboardContext(today)
+        momentum = dash.compute_momentum(ctx)
+        assert momentum is not None and momentum <= dash.RECOVERY_MOMENTUM_ESIGI
+
+        breakdown = dash.life_score_breakdown(ctx)
+        alert = dash.recovery_alert(ctx, breakdown)
+        assert alert is not None
+        assert alert["title"] == "Toparlanma Fırsatı"
+        assert alert["icon"] == "target"
+        # Ton uyarısı: suçlayıcı/alarmcı kelimeler kullanılmamalı (ROADMAP.md).
+        # Not: "başarısızlık değil" gibi negatif bir çerçeveleme (korkuyu adlandırıp
+        # reddetme) roadmap'in kendi örnek metninde de var ve kasıtlı — o yüzden
+        # "başarısız" burada yasaklı değil, sadece çıplak/onaysız kullanımı olurdu.
+        for banned in ("düşüş", "kötü gidişat", "kötüye gidiyorsun"):
+            assert banned not in alert["text"]
+
+
+def test_recovery_alert_none_when_momentum_above_threshold(flask_app, monkeypatch):
+    """Küçük bir gerileme (eşiğin altına düşmeyen) bandı tetiklememeli —
+    eşik mantığını veri seçiminden bağımsız izole etmek için compute_momentum
+    sabit bir değere monkeypatch'leniyor."""
+    import app as appmod
+    import dashboard_logic as dash
+
+    with appmod.app.app_context():
+        ctx = dash.DashboardContext(_today())
+
+        monkeypatch.setattr(dash, "compute_momentum", lambda _ctx: dash.RECOVERY_MOMENTUM_ESIGI + 1)
+        assert dash.recovery_alert(ctx, {"weakest": "is"}) is None
+
+        monkeypatch.setattr(dash, "compute_momentum", lambda _ctx: dash.RECOVERY_MOMENTUM_ESIGI)
+        alert = dash.recovery_alert(ctx, {"weakest": "is"})
+        assert alert is not None and alert["title"] == "Toparlanma Fırsatı"
+
+        monkeypatch.setattr(dash, "compute_momentum", lambda _ctx: dash.RECOVERY_MOMENTUM_ESIGI - 5)
+        assert dash.recovery_alert(ctx, {"weakest": None}) is None  # weakest yoksa da sessiz kalmalı

@@ -295,6 +295,43 @@ def life_score_breakdown(ctx, gelir_gizli=False):
     }
 
 
+RECOVERY_MOMENTUM_ESIGI = -10  # bu eşiğin altına düşen momentum "Toparlanma Fırsatı" bandını tetikler
+_WEAKEST_TR = {"is": "İş Takip", "aliskanlik": "Alışkanlıklar", "finans": "Finans"}
+
+
+def recovery_alert(ctx, breakdown):
+    """
+    Son 14 gün, önceki 14 güne göre belirgin bir gerileme gösterdiğinde
+    (compute_momentum(ctx) <= RECOVERY_MOMENTUM_ESIGI) ayrı ve suçlayıcı
+    olmayan bir bant için veri üretir. compute_momentum zaten MIN_MOMENTUM_DAYS
+    kontrolünü kendi içinde yapıp yetersiz veri varken None döndürüyor — ek bir
+    koruma gerekmiyor. get_insights()'ın max_insights sınırının İÇİNDE bir aday
+    DEĞİL, home.html'de ayrı/bağımsız bir slot olarak kullanılmalı.
+
+    "Kötü gidişat" burada sadece dahili bir isim — döndürülen metin bilinçli
+    olarak "başarısız"/"düşüş" gibi suçlayıcı kelimelerden kaçınıyor (bkz.
+    ROADMAP.md'nin "düşük skor 'başarısızsın' demek değil" ilkesi).
+    """
+    momentum = compute_momentum(ctx)
+    if momentum is None or momentum > RECOVERY_MOMENTUM_ESIGI:
+        return None
+
+    weakest = breakdown.get("weakest")
+    if weakest is None:
+        return None
+
+    return {
+        "icon": "target",
+        "title": "Toparlanma Fırsatı",
+        "text": (
+            f"Son 14 gün, önceki 14 güne göre {abs(momentum)} puan geride — "
+            f"bu bir başarısızlık değil, dikkatini nereye vereceğini gösteren "
+            f"bir sinyal. En büyük fırsat: {_WEAKEST_TR[weakest]}. Bugün sadece "
+            f"orada küçük bir adım at."
+        ),
+    }
+
+
 def life_score_days(ctx):
     """Son 14 günde 'veri var' sayısı — Life Score'a güven eşiği için."""
     return sum(
@@ -783,6 +820,7 @@ def build_home_context(ctx, now, gelir_gizli):
 
         "momentum": compute_momentum(ctx),
         "istikrar": compute_istikrar(ctx),
+        "recovery_alert": recovery_alert(ctx, breakdown),
 
         "priorities": dashboard_priorities(ctx),
         "insights": get_insights(ctx),

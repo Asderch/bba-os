@@ -70,6 +70,19 @@
     {% endif %}
 </div>
 
+<!-- ================= TOPARLANMA FIRSATI ================= -->
+{% if recovery_alert %}
+<div class="bba-card bba-recovery-card mb-3">
+    <div class="bba-insight-row" style="border-bottom: none; padding-top: 0; padding-bottom: 0;">
+        <span class="bba-insight-icon">{{ icon(recovery_alert.icon, 16) }}</span>
+        <div>
+            <div class="bba-label mb-1">{{ recovery_alert.title }}</div>
+            <div class="bba-insight-text">{{ recovery_alert.text }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- ================= GÜNÜN ÖNCELİKLERİ ================= -->
 <div class="bba-card mb-3">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
