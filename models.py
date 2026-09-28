@@ -316,6 +316,40 @@ class HabitLog(db.Model):
     created_at = db.Column(db.DateTime, default=_local_now)
 
 
+# ============================================================
+# SAYAÇLAR
+# ============================================================
+# Alışkanlık modülünden bilinçli olarak ayrı: Alışkanlık bir hedefe
+# ULAŞMAYI ödüllendirir (puan, "yapıldı", streak). Sigara gibi azaltılması
+# istenen şeylerde bu mantık tersine işler — burada hedef, tamamlanma ya
+# da puan kavramı YOK, sadece "bugün kaç tane" sorusuna sade bir sayaç.
+
+class Counter(db.Model):
+    """Saf sayım — ör. sigara (dal/paket). Puana/Life Score'a hiç dahil değil."""
+    __tablename__ = "counters"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)
+    unit = db.Column(db.String(20))                # ör. "dal", "adet", "fincan"
+    why = db.Column(db.String(255))                 # isteğe bağlı not, ör. "azaltmaya çalışıyorum"
+    active = db.Column(db.Boolean, default=True)    # False = arşivlenmiş, geçmiş verisi korunur
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=_local_now)
+
+    logs = db.relationship("CounterLog", backref="counter", lazy=True, cascade="all, delete-orphan")
+
+
+class CounterLog(db.Model):
+    """Bir sayacın tek bir eklemesi — gün toplamı sum(amount) ile bulunur."""
+    __tablename__ = "counter_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    counter_id = db.Column(db.Integer, db.ForeignKey("counters.id"), nullable=False, index=True)
+    log_date = db.Column(db.Date, nullable=False, index=True)
+    amount = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=_local_now)
+
+
 class AppSetting(db.Model):
     """Cihazdan bağımsız, kalıcı tek-kullanıcı ayarları (anahtar/değer).
 

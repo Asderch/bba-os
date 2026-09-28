@@ -5,6 +5,7 @@ GET_ROUTES = [
     "/", "/is/", "/is/yonet", "/is/gecmis",
     "/butce/", "/butce/abonelikler", "/mesai/", "/mesai/hesaplama", "/mesai/profil",
     "/aliskanlik/", "/aliskanlik/yonet", "/aliskanlik/istatistik",
+    "/sayac/", "/sayac/yonet", "/sayac/istatistik",
     "/analizler/", "/notlar/",
     "/yedekler", "/yedekle",
     # bozuk ay/yıl argümanları 500'e düşürmemeli

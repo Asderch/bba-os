@@ -1,0 +1,52 @@
+{% extends "sayac/_layout.html" %}
+{% block title %}Bugün{% endblock %}
+
+{% block page_context %}<div class="bba-page-context">{{ weekday_name }}, {{ today.strftime('%d.%m.%Y') }}</div>{% endblock %}
+
+{% block inner %}
+{% if not rows %}
+    <div class="card">
+        <div class="card-body text-center text-secondary">
+            <p>Henüz bir sayaç eklemedin.</p>
+            <a href="{{ url_for('sayac.manage_counters') }}" class="btn btn-primary">İlk Sayacını Ekle</a>
+        </div>
+    </div>
+{% else %}
+<div class="card">
+    <div class="list-group list-group-flush">
+        {% for row in rows %}
+        <div class="list-group-item">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div class="flex-fill" style="min-width: 0;">
+                    <a href="{{ url_for('sayac.edit_counter', counter_id=row.counter.id) }}" class="text-reset" style="text-decoration: none;">
+                        <div class="fw-medium">{{ row.counter.name }}</div>
+                    </a>
+                    {% if row.counter.why %}<div class="text-secondary small">{{ row.counter.why }}</div>{% endif %}
+                </div>
+                <div class="text-end flex-shrink-0">
+                    <div class="bba-stat-number bba-stat-number-sm">{{ row.today_display }}</div>
+                    <div class="text-secondary small">bu hafta {{ row.week_total_display }}</div>
+                </div>
+            </div>
+            <div class="mt-2">
+                <form method="POST" action="{{ url_for('sayac.log_amount', counter_id=row.counter.id) }}" class="d-flex gap-2 flex-wrap">
+                    {% if row.counter.unit == 'dal' %}
+                        <button type="submit" name="amount" value="1" class="btn btn-outline-secondary btn-sm">+1 dal</button>
+                        <button type="submit" name="amount" value="20" class="btn btn-outline-secondary btn-sm">Paket bitti (+20)</button>
+                    {% else %}
+                        <input type="number" name="amount" class="form-control form-control-sm font-mono" style="width: 110px;" placeholder="{{ row.counter.unit }}" min="0" step="1" required>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Ekle</button>
+                    {% endif %}
+                </form>
+                {% if row.today_total %}
+                <form method="POST" action="{{ url_for('sayac.undo_last_log', counter_id=row.counter.id) }}" class="mt-1">
+                    <button type="submit" class="btn btn-link btn-sm text-secondary p-0">Son girişi geri al</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

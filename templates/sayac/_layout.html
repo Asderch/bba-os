@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("hash", 22) }} Sayaçlar</h2>
+    <div class="bba-subnav">
+        <a href="{{ url_for('sayac.index') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'sayac.index' }}">Bugün</a>
+        <a href="{{ url_for('sayac.manage_counters') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'sayac.manage_counters' }}">Yönet</a>
+        <a href="{{ url_for('sayac.stats') }}" class="bba-subnav-link {{ 'active' if request.endpoint == 'sayac.stats' }}">İstatistik</a>
+    </div>
+</div>
+{% block page_context %}{% endblock %}
+{% block inner %}{% endblock %}
+{% endblock %}

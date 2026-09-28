@@ -1,0 +1,39 @@
+{% extends "sayac/_layout.html" %}
+{% block title %}İstatistik{% endblock %}
+
+{% block page_context %}<div class="bba-page-context">Bu Haftanın Özeti</div>{% endblock %}
+
+{% block inner %}
+{% if not table %}
+    <div class="card"><div class="card-body text-center text-secondary">Henüz sayaç eklemedin.</div></div>
+{% else %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead>
+                <tr>
+                    <th>Sayaç</th>
+                    {% for d in week_days %}
+                        <th class="text-center">{{ weekdays_short[d.weekday()] }}</th>
+                    {% endfor %}
+                    <th class="text-end">Bu Hafta</th>
+                    <th class="text-end">Bu Ay</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table %}
+                <tr>
+                    <td class="text-nowrap">{{ row.counter.name }}</td>
+                    {% for cell in row.cells %}
+                        <td class="text-center font-mono">{{ cell }}</td>
+                    {% endfor %}
+                    <td class="text-end fw-bold font-mono">{{ row.week_total_display }}</td>
+                    <td class="text-end font-mono">{{ row.month_total_display }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

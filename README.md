@@ -36,7 +36,11 @@ python desktop.py             # masaüstü pencere
 - **Mesai Takip** (`/mesai`) — fazla mesai kaydı, maaş hesaplama
   (Excel formülüne dayalı)
 - **Alışkanlık Takip** (`/aliskanlik`) — hedef koymadan işaretleme,
-  "neden" açıklaması, etki puanı, hazır 8'li başlangıç seti
+  "neden" açıklaması, etki puanı, hazır 8'li başlangıç seti; bazı
+  alışkanlıklarda ("amount"/"note" modu) gerçek miktar ya da not girişi
+- **Sayaçlar** (`/sayac`) — Alışkanlık'tan bilinçli olarak ayrı: hedef ya
+  da puan yok, sadece azaltılmak istenen bir şeyin (ör. sigara) sade
+  günlük sayımı
 - **Analizler** (`/analizler`) — tüm modülleri (İş/Alışkanlık/Finans/Mesai)
   tek sayfada toplayan analiz görünümü: Life Score, momentum, istikrar,
   içgörüler, İş Takip haftalık tablosu
