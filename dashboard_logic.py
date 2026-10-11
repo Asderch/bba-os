@@ -286,12 +286,16 @@ def life_score_breakdown(ctx, gelir_gizli=False):
         weak_candidates.append(("finans", fin_b))
     scored = [(k, v) for k, v in weak_candidates if v is not None]
     weakest = min(scored, key=lambda kv: kv[1])[0] if scored else None
+    strongest = max(scored, key=lambda kv: kv[1])[0] if len(scored) > 1 else None
+    if strongest == weakest:
+        strongest = None
 
     h = ctx.month_overtime_hours
     return {
         "is": r(is_b), "aliskanlik": r(al_b), "finans": r(fin_b),
         "mesai_saat": (int(h) if h == int(h) else round(h, 1)) if h else 0,
         "weakest": weakest,
+        "strongest": strongest,
     }
 
 
@@ -751,6 +755,69 @@ def get_insights(ctx, max_insights=3):
 
     candidates.sort(key=lambda c: c[0])
     return [c[1] for c in candidates[:max_insights]]
+
+
+MIN_WEEKLY_REPORT_DAYS = 3  # haftalık raporun anlamlı olması için son 7 günde en az bu kadar geçerli gün
+
+
+def _week_avg_score(ctx, days, gelir_gizli):
+    vals = [v for v in (compute_life_score(ctx, for_day=d, gelir_gizli=gelir_gizli) for d in days) if v is not None]
+    return (sum(vals) / len(vals)) if vals else None
+
+
+def weekly_summary(ctx, gelir_gizli=False):
+    """
+    Haftalık özet raporu için tek sözlük: haftanın skoru, önceki haftaya göre
+    fark, iyi gün sayısı, en güçlü/en zayıf boyut, haftanın içgörüsü ve gelecek
+    hafta önerisi. Yeni bir skor/eşik ÜRETMİYOR — var olan compute_life_score,
+    life_score_breakdown ve get_insights çıktılarını haftalık pencerede toplayıp
+    bir dil katmanıyla sunuyor. Son 7 günde MIN_WEEKLY_REPORT_DAYS'den az geçerli
+    gün varsa {"enough_data": False, ...} döner (yanıltıcı rapor üretmez).
+    """
+    this_days = [ctx.today - timedelta(days=i) for i in range(7)]
+    prev_days = [ctx.today - timedelta(days=i) for i in range(7, 14)]
+
+    blended = [ctx.daily_blended_pct(d) for d in this_days]
+    valid = [v for v in blended if v is not None]
+    if len(valid) < MIN_WEEKLY_REPORT_DAYS:
+        return {"enough_data": False, "valid_days": len(valid), "min_days": MIN_WEEKLY_REPORT_DAYS}
+
+    score = _week_avg_score(ctx, this_days, gelir_gizli)
+    prev_valid = [v for v in (ctx.daily_blended_pct(d) for d in prev_days) if v is not None]
+    prev_score = _week_avg_score(ctx, prev_days, gelir_gizli) if len(prev_valid) >= MIN_WEEKLY_REPORT_DAYS else None
+    delta = round(score - prev_score) if (score is not None and prev_score is not None) else None
+
+    breakdown = life_score_breakdown(ctx, gelir_gizli=gelir_gizli)
+    weakest, strongest = breakdown.get("weakest"), breakdown.get("strongest")
+    weakest_tr = _WEAKEST_TR.get(weakest)
+
+    if weakest_tr is None:
+        suggestion = "Gelecek hafta aynı tempoyu koru; küçük ama düzenli adımlar en değerlisi."
+    elif delta is not None and delta > 3:
+        suggestion = (f"Bu hafta önceki haftadan {delta} puan ileridesin. İvmeyi korumak için "
+                      f"gelecek hafta {weakest_tr} alanında küçük bir hedef koy.")
+    elif delta is not None and delta < -3:
+        suggestion = (f"Bu hafta önceki haftanın {abs(delta)} puan gerisinde — bu bir sinyal, hata değil. "
+                      f"Gelecek hafta sadece {weakest_tr} alanında küçük bir hedef koy.")
+    else:
+        suggestion = f"Gelecek hafta {weakest_tr} alanında küçük bir hedef koy."
+
+    insights = get_insights(ctx, max_insights=1)
+    return {
+        "enough_data": True,
+        "valid_days": len(valid),
+        "score": round(score) if score is not None else None,
+        "prev_score": round(prev_score) if prev_score is not None else None,
+        "delta": delta,
+        "good_days": sum(1 for v in valid if v >= IYI_GUN_ESIGI),
+        "week_start": this_days[-1],
+        "week_end": this_days[0],
+        "breakdown": breakdown,
+        "strongest_tr": _WEAKEST_TR.get(strongest),
+        "weakest_tr": weakest_tr,
+        "insight": insights[0] if insights else None,
+        "suggestion": suggestion,
+    }
 
 
 # ======================================================================

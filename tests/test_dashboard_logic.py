@@ -79,7 +79,7 @@ def test_breakdown_and_priorities_shape(flask_app, seeded):
     with appmod.app.app_context():
         ctx = dash.DashboardContext(today)
         bd = dash.life_score_breakdown(ctx)
-        assert set(bd) == {"is", "aliskanlik", "finans", "mesai_saat", "weakest"}
+        assert set(bd) == {"is", "aliskanlik", "finans", "mesai_saat", "weakest", "strongest"}
         assert bd["is"] == 100 and bd["aliskanlik"] == 100
 
         pri = dash.dashboard_priorities(ctx)
@@ -444,3 +444,53 @@ def test_recovery_alert_none_when_momentum_above_threshold(flask_app, monkeypatc
 
         monkeypatch.setattr(dash, "compute_momentum", lambda _ctx: dash.RECOVERY_MOMENTUM_ESIGI - 5)
         assert dash.recovery_alert(ctx, {"weakest": None}) is None  # weakest yoksa da sessiz kalmalı
+
+
+# ----------------------------------------------------------------------
+# weekly_summary (V4 — Haftalık özet raporu)
+
+def test_weekly_summary_not_enough_data(flask_app):
+    import app as appmod
+    import dashboard_logic as dash
+
+    with appmod.app.app_context():
+        s = dash.weekly_summary(dash.DashboardContext(_today()))
+        assert s["enough_data"] is False
+        assert s["min_days"] == dash.MIN_WEEKLY_REPORT_DAYS
+
+
+def test_weekly_summary_with_data(flask_app, seeded):
+    import app as appmod
+    import dashboard_logic as dash
+
+    today, _ = seeded
+    with appmod.app.app_context():
+        s = dash.weekly_summary(dash.DashboardContext(today))
+        assert s["enough_data"] is True
+        assert s["score"] is not None and 0 <= s["score"] <= 100
+        assert s["good_days"] <= s["valid_days"] <= 7
+        assert s["suggestion"]
+        assert s["delta"] is None or isinstance(s["delta"], int)
+
+
+def test_weekly_summary_suggestion_tone_on_decline(flask_app, monkeypatch):
+    import app as appmod
+    import dashboard_logic as dash
+
+    with appmod.app.app_context():
+        ctx = dash.DashboardContext(_today())
+        monkeypatch.setattr(ctx, "daily_blended_pct", lambda d: 40.0)
+        monkeypatch.setattr(dash, "compute_life_score",
+                            lambda c, for_day=None, gelir_gizli=False: 40.0 if for_day >= _today() - timedelta(days=6) else 70.0)
+        monkeypatch.setattr(dash, "life_score_breakdown",
+                            lambda c, gelir_gizli=False: {"is": 40, "aliskanlik": 60, "finans": None, "weakest": "is", "strongest": "aliskanlik"})
+        s = dash.weekly_summary(ctx)
+        assert s["delta"] == -30
+        assert "İş Takip" in s["suggestion"] and "Alışkanlıklar" == s["strongest_tr"]
+        for banned in ("başarısız", "kötü", "düşüş"):
+            assert banned not in s["suggestion"]
+
+
+def test_weekly_report_route_renders(client, flask_app):
+    html = client.get("/analizler/haftalik").get_data(as_text=True)
+    assert "Haftalık Özet" in html

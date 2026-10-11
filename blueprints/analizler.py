@@ -120,3 +120,13 @@ def index():
         finans={"income": ctx.month_income, "expense": ctx.month_expense, "net": ctx.month_net},
         mesai={"hours": ctx.month_overtime_hours, "amount": mesai_calc.get("mesai_tutari")},
     )
+
+
+@bp.route("/haftalik")
+def weekly_report():
+    """Haftalık özet raporu — son 7 günün skoru, önceki haftayla fark, en
+    güçlü/zayıf alan, haftanın içgörüsü ve gelecek hafta önerisi."""
+    today = today_tr()
+    ctx = dash.DashboardContext(today)
+    summary = dash.weekly_summary(ctx, gelir_gizli=get_gelir_gizli())
+    return render_template("analizler/haftalik.html", today=today, s=summary)

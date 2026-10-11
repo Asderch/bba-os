@@ -130,8 +130,10 @@ Bu sayede artık:
     tutarlı, "fırsat" hissi veren bir renk/ikon (🧭/🎯) kullanmalı.
 - [x] Life Score alt-boyutlara ayrıldı (İş/Alışkanlık/Finans/Mesai barları +
       "en büyük fırsat" ipucu) — `life_score_breakdown`, ana ekran hero kartı
-- [ ] Haftalık özet raporu (haftanın skoru, momentum, en iyi/gelişecek alan,
-      haftanın içgörüsü, gelecek hafta önerisi)
+- [x] Haftalık özet raporu (haftanın skoru, momentum, en iyi/gelişecek alan,
+      haftanın içgörüsü, gelecek hafta önerisi) — 2026-10-11'de uygulandı:
+      `dashboard_logic.weekly_summary()`, `/analizler/haftalik`, `life_score_breakdown`'a
+      katkısal `"strongest"` alanı; ana ekran ve Analizler'den link. V4 tamamlandı.
   - *Değerlendirme (2026-09-11):* Kod olarak 1 Ekim'i beklemeden yazılmaya
     BAŞLANABİLİR — bu madde de puanlama fonksiyonlarını/eşiklerini
     DEĞİŞTİRMİYOR, sadece var olan `compute_life_score`,

@@ -6,7 +6,7 @@ GET_ROUTES = [
     "/butce/", "/butce/abonelikler", "/mesai/", "/mesai/hesaplama", "/mesai/profil",
     "/aliskanlik/", "/aliskanlik/yonet", "/aliskanlik/istatistik",
     "/sayac/", "/sayac/yonet", "/sayac/istatistik",
-    "/analizler/", "/notlar/",
+    "/analizler/", "/analizler/haftalik", "/notlar/",
     "/yedekler", "/yedekle",
     # bozuk ay/yıl argümanları 500'e düşürmemeli
     "/butce/?month=99", "/butce/?month=0", "/butce/?year=abc",

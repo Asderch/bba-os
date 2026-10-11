@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Haftalık Özet{% endblock %}
+
+{% block content %}
+<div class="bba-page-header">
+    <h2 class="bba-page-title">{{ icon("calendar", 22) }} Haftalık Özet</h2>
+</div>
+{% if not s.enough_data %}
+<div class="bba-page-context">Son 7 gün</div>
+<div class="bba-card">
+    <div class="bba-empty-inline">
+        Rapor için son 7 günde en az {{ s.min_days }} günlük veri gerekiyor
+        (şu an {{ s.valid_days }}). Birkaç gün daha kayıt girdikçe burası dolacak.
+    </div>
+</div>
+{% else %}
+<div class="bba-page-context">{{ s.week_start.strftime('%d.%m') }} – {{ s.week_end.strftime('%d.%m.%Y') }}</div>
+
+<div class="bba-card bba-hero mb-3">
+    <div class="bba-hero-main">
+        <div class="bba-hero-score-block">
+            <div class="bba-label mb-1">HAFTANIN SKORU</div>
+            <div class="bba-hero-score">{{ s.score }}<span class="bba-hero-score-max">/100</span></div>
+            {% if s.delta is not none and s.delta != 0 %}
+            <div class="bba-delta-chip {{ 'up' if s.delta > 0 else 'down' }}">
+                {{ '+' if s.delta > 0 }}{{ s.delta }} <span>önceki haftaya göre</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="bba-hero-secondary">
+            <div class="bba-mini-stat">
+                <div class="bba-label">İYİ GÜN</div>
+                <div class="bba-mini-stat-value">{{ s.good_days }}<span class="bba-mini-stat-sub">/{{ s.valid_days }} gün</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="bba-dims bba-dims-3">
+        {% for key, label in [('is','İş'), ('aliskanlik','Alışkanlık'), ('finans','Finans')] %}
+        {% set v = s.breakdown[key] %}
+        <div class="bba-dim {{ 'is-weak' if s.breakdown.weakest == key }}">
+            <div class="bba-dim-head">
+                <span class="bba-dim-label">{{ label }}</span>
+                <span class="bba-dim-pct">{{ v ~ '%' if v is not none else '—' }}</span>
+            </div>
+            <div class="bba-dim-track"><div class="bba-dim-fill" style="width: {{ v or 0 }}%;"></div></div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if s.strongest_tr or s.weakest_tr %}
+    <div class="bba-hero-hint">
+        {% if s.strongest_tr %}En güçlü alan: <b>{{ s.strongest_tr }}</b>{% endif %}
+        {% if s.strongest_tr and s.weakest_tr %} · {% endif %}
+        {% if s.weakest_tr %}En büyük fırsat: <b>{{ s.weakest_tr }}</b>{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% if s.insight %}
+<div class="bba-card mb-3">
+    <div class="bba-label mb-2">HAFTANIN İÇGÖRÜSÜ</div>
+    <div class="bba-insight-row" style="border-bottom: none; padding: 0;">
+        <span class="bba-insight-icon">{{ icon(s.insight.icon, 16) }}</span>
+        <div>
+            <div class="bba-insight-text">{{ s.insight.text }}</div>
+            {% if s.insight.suggestion %}<div class="bba-insight-sub">{{ icon('target', 13) }} {{ s.insight.suggestion }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="bba-card bba-recovery-card mb-3">
+    <div class="bba-label mb-1">GELECEK HAFTA</div>
+    <div class="bba-insight-text">{{ s.suggestion }}</div>
+</div>
+{% endif %}
+
+<a href="{{ url_for('analizler.index') }}" class="d-inline-block mt-2 text-secondary">← Analizler</a>
+{% endblock %}
