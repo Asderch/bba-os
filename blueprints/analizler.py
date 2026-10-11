@@ -14,7 +14,7 @@ from datetime import timedelta
 from flask import Blueprint, render_template
 
 import dashboard_logic as dash
-from common import TR_WEEKDAYS, today_tr, week_bounds
+from common import TR_WEEKDAYS, today_tr, week_bounds, habit_fraction
 from salary import calculate_salary
 from settings import get_gelir_gizli
 from models import DailyTask, DailyTaskCompletion, Habit, HabitCompletion
@@ -81,7 +81,12 @@ def _aliskanlik_weekly(week_start, week_end):
     )
     done_set = {(c.habit_id, c.completion_date) for c in completions}
     week_days = [week_start + timedelta(days=i) for i in range(7)]
-    week_puan = sum(h.impact for h in habits for d in week_days if (h.id, d) in done_set)
+    amounts = dash.habit_amount_totals(week_start, week_end)
+    week_puan = round(sum(
+        h.impact * habit_fraction(h, (h.id, d) in done_set, amounts.get((h.id, d)))
+        for h in habits for d in week_days
+    ), 1)
+    week_puan = int(week_puan) if week_puan == int(week_puan) else week_puan
     week_max_puan = sum(7 * h.impact for h in habits)
     pct = round(week_puan / week_max_puan * 100) if week_max_puan else None
     return {"week_puan": week_puan, "week_max_puan": week_max_puan, "pct": pct}

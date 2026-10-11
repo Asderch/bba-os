@@ -12,15 +12,26 @@ import calendar
 from datetime import timedelta
 
 from extensions import db
-from common import TR_MONTHS, TR_WEEKDAYS, month_bounds
+from common import habit_fraction, TR_MONTHS, TR_WEEKDAYS, month_bounds
 from salary import calculate_salary
 from models import (
     DailyTask, DailyTaskCompletion, DeadlineTask, NonWorkDay,
-    Habit, HabitCompletion, OvertimeEntry, LeaveEntry, Transaction, MonthlyGoal, Subscription,
+    Habit, HabitCompletion, HabitLog, OvertimeEntry, LeaveEntry, Transaction, MonthlyGoal, Subscription,
 )
 
 IYI_GUN_ESIGI = 50  # blended günlük performans bu yüzdenin üzerindeyse "iyi gün" sayılır
 CONTEXT_LOOKBACK_DAYS = 90  # tüm alt hesaplamaların ihtiyaç duyduğu en geniş pencere
+
+
+def habit_amount_totals(start, end):
+    """{(habit_id, tarih): toplam miktar} — "amount" tipi alışkanlık girişleri."""
+    totals = {}
+    for log in HabitLog.query.filter(
+        HabitLog.log_date >= start, HabitLog.log_date <= end, HabitLog.amount.isnot(None),
+    ).all():
+        key = (log.habit_id, log.log_date)
+        totals[key] = totals.get(key, 0) + log.amount
+    return totals
 
 
 class DashboardContext:
@@ -77,6 +88,7 @@ class DashboardContext:
         for c in habit_completions:
             if c.habit_id in habit_ids:  # arşivlenmiş alışkanlıklar günlük performansa katılmasın
                 self.habit_done_by_date.setdefault(c.completion_date, set()).add(c.habit_id)
+        self.habit_amounts = habit_amount_totals(self.window_start, today)
 
         # Bu ayın bütçe hedefi + net durumu + mesai kayıtları — BİR KEZ çekilir,
         # compute_life_score / life_score_breakdown / build_home_context hepsi
@@ -136,7 +148,10 @@ class DashboardContext:
         if day < self.activity_start or self.max_puan == 0:
             return None
         done_ids = self.habit_done_by_date.get(day, set())
-        gunun_puani = sum(h.impact for h in self.habits if h.id in done_ids)
+        gunun_puani = sum(
+            h.impact * habit_fraction(h, h.id in done_ids, self.habit_amounts.get((h.id, day)))
+            for h in self.habits
+        )
         return gunun_puani / self.max_puan * 100
 
     def daily_blended_pct(self, day):

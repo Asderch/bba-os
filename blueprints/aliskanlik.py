@@ -3,7 +3,8 @@ from datetime import timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
-from common import today_tr, TR_WEEKDAYS_SHORT, week_bounds, safe_positive_float, safe_nonnegative_float
+from common import today_tr, TR_WEEKDAYS_SHORT, week_bounds, safe_positive_float, safe_nonnegative_float, habit_fraction
+from dashboard_logic import habit_amount_totals
 from models import Habit, HabitCompletion, HabitLog, WEEKDAYS, DEFAULT_HABITS
 
 bp = Blueprint("aliskanlik", __name__, url_prefix="/aliskanlik")
@@ -94,6 +95,12 @@ def _last_30_days_grid(habit_id):
     return days
 
 
+def _fmt_puan(value):
+    """Kısmi puanı okunur yaz: 21.0 -> 21, 18.4 -> 18.4."""
+    value = round(value, 1)
+    return int(value) if value == int(value) else value
+
+
 def _format_amount(value, unit):
     """"amount" tipi bir alışkanlığın miktarını okunur biçime çevirir.
     ml -> litreye çevrilip gösterilir (ör. 2500 -> "2.5 L"), diğerleri
@@ -137,8 +144,7 @@ def index():
     for h in habits:
         done = h.id in todays_completions
         max_puan += h.impact
-        if done:
-            today_puan += h.impact
+        today_puan += h.impact * habit_fraction(h, done, today_amount_by_habit.get(h.id))
         row = {
             "habit": h,
             "done": done,
@@ -162,7 +168,7 @@ def index():
         "aliskanlik/index.html",
         rows=rows, done_count=done_count, today=today,
         weekday_name=WEEKDAYS[today.weekday()],
-        today_puan=today_puan, max_puan=max_puan,
+        today_puan=_fmt_puan(today_puan), max_puan=max_puan,
     )
 
 
@@ -460,22 +466,26 @@ def stats():
         .all()
     )
     done_set = {(c.habit_id, c.completion_date) for c in completions}
+    amounts = habit_amount_totals(week_start, week_end)
 
     table = []
     week_puan = 0
     week_max_puan = 0
     for h in habits:
         cells = [(h.id, d) in done_set for d in week_days]
+        fractions = [habit_fraction(h, cells[i], amounts.get((h.id, d))) for i, d in enumerate(week_days)]
+        # Yapılmamış ama kısmi ilerleme olan günler: yüzde olarak göster.
+        partials = [round(f * 100) if (not cells[i] and 0 < f < 1) else None for i, f in enumerate(fractions)]
         completed_days = sum(cells)
-        week_puan += completed_days * h.impact
+        week_puan += h.impact * sum(fractions)
         week_max_puan += 7 * h.impact
         table.append({
-            "habit": h, "cells": cells,
+            "habit": h, "cells": cells, "partials": partials,
             "total": completed_days, "streak": _calculate_streak(h.id),
         })
 
     return render_template(
         "aliskanlik/istatistik.html",
         table=table, week_days=week_days, weekdays=WEEKDAYS, weekdays_short=TR_WEEKDAYS_SHORT, today=today,
-        week_puan=week_puan, week_max_puan=week_max_puan,
+        week_puan=_fmt_puan(week_puan), week_max_puan=week_max_puan,
     )

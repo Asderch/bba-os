@@ -254,3 +254,47 @@ def test_delete_habit_refuses_while_active(client, flask_app):
     client.post(f"/aliskanlik/habit/{habit_id}/delete")
     with appmod.app.app_context():
         assert Habit.query.get(habit_id) is None
+
+
+# ----------------------------------------------------------------------
+# Kısmi başarı: hedefe yaklaşıp kaçırılan günler (2.0/2.5 L, 6332/7000 adım)
+# ikili "yapılmadı" yerine yüzde olarak puana yansımalı.
+
+def test_habit_fraction_helper():
+    from types import SimpleNamespace as NS
+    from common import habit_fraction
+
+    amount = NS(track_mode="amount", daily_target=2500)
+    assert habit_fraction(amount, True, None) == 1.0
+    assert habit_fraction(amount, False, 2000) == 0.8
+    assert habit_fraction(amount, False, 9999) == 1.0   # üst sınır 1.0
+    assert habit_fraction(amount, False, None) == 0.0
+    assert habit_fraction(NS(track_mode="toggle", daily_target=None), False, 5) == 0.0
+    assert habit_fraction(NS(track_mode="amount", daily_target=None), False, 5) == 0.0
+
+
+def test_partial_amount_counts_toward_today_puan(client, flask_app):
+    import app as appmod
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(daily_target=2500)  # impact=4
+        habit_id = habit.id
+
+    client.post(f"/aliskanlik/habit/{habit_id}/log-amount", data={"amount": "2000"})
+    html = client.get("/aliskanlik/").get_data(as_text=True)
+    assert "3.2" in html          # 4 puan * %80
+    assert "0 / 1 alışkanlık tamamlandı" in html  # tamamlanma sayısı ikili kalıyor
+
+
+def test_life_score_alisanlik_pct_uses_partial_progress(flask_app):
+    import app as appmod
+    import dashboard_logic as dash
+    from extensions import db
+    from models import HabitLog
+
+    with appmod.app.app_context():
+        habit = _seed_amount_habit(unit="adım", daily_target=7000, amount_input_mode="latest")
+        db.session.add(HabitLog(habit_id=habit.id, log_date=_today(), amount=6300))
+        db.session.commit()
+        ctx = dash.DashboardContext(_today())
+        assert round(ctx.daily_aliskanlik_pct(_today())) == 90

@@ -115,6 +115,18 @@ def safe_nonnegative_float(raw):
     return value
 
 
+def habit_fraction(habit, done, amount_total):
+    """Bir alışkanlığın o günkü başarı oranı (0.0-1.0). Yapıldıysa 1.0; "amount"
+    tipinde ve hedef tanımlıysa kısmi ilerleme (ör. 2.0 L / 2.5 L = 0.8); yoksa 0.0.
+    İkili "yapıldı/yapılmadı" yerine yüzde — hedefe çok yaklaşıp kaçırılan günler
+    sıfır sayılmasın diye."""
+    if done:
+        return 1.0
+    if getattr(habit, "track_mode", None) == "amount" and habit.daily_target and amount_total:
+        return max(0.0, min(1.0, amount_total / habit.daily_target))
+    return 0.0
+
+
 def week_bounds(day):
     """(haftanın Pazartesi'si, haftanın Pazar'ı) — ikisi de date."""
     week_start = day - timedelta(days=day.weekday())

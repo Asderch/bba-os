@@ -34,7 +34,7 @@
                 <tr>
                     <td class="text-nowrap">{{ row.habit.name }} {{ impact_meter(row.habit.impact) }}</td>
                     {% for done in row.cells %}
-                        <td class="text-center">{% if done %}<span class="bba-week-check">✓</span>{% else %}<span class="text-secondary">·</span>{% endif %}</td>
+                        <td class="text-center">{% if done %}<span class="bba-week-check">✓</span>{% elif row.partials[loop.index0] %}<span class="font-mono small text-secondary" title="Kısmi ilerleme">%{{ row.partials[loop.index0] }}</span>{% else %}<span class="text-secondary">·</span>{% endif %}</td>
                     {% endfor %}
                     <td class="text-end fw-bold font-mono">{{ row.total }} / 7</td>
                     <td class="text-end font-mono">{% if row.streak > 0 %}{{ icon('flame', 14) }} {{ row.streak }}{% else %}—{% endif %}</td>
