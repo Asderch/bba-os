@@ -5,11 +5,10 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, render_template, send_file, abort, request, Response
+from flask import Flask, render_template, send_file, abort, request, Response, redirect, url_for
 
 from common import today_tr
 from extensions import db
-from settings import get_gelir_gizli
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "personal_os.db")
@@ -107,45 +106,20 @@ def _guard_request():
     return None
 
 # Blueprint'leri kaydet
-from blueprints.is_takip import bp as is_takip_bp
-from blueprints.butce import bp as butce_bp
 from blueprints.mesai import bp as mesai_bp
-from blueprints.aliskanlik import bp as aliskanlik_bp
-from blueprints.sayac import bp as sayac_bp
-from blueprints.analizler import bp as analizler_bp
-from blueprints.notlar import bp as notlar_bp
 
-app.register_blueprint(is_takip_bp)
-app.register_blueprint(butce_bp)
 app.register_blueprint(mesai_bp)
-app.register_blueprint(aliskanlik_bp)
-app.register_blueprint(sayac_bp)
-app.register_blueprint(analizler_bp)
-app.register_blueprint(notlar_bp)
-
-
-PARA_MASK = "••••••"
 
 
 @app.context_processor
-def _inject_privacy():
-    """Gelir gizleme: veritabanında (AppSetting, cihazdan bağımsız) tutulan bir
-    bayrak. True iken şablonlar gelir/net/maaş rakamlarını sunucu tarafında
-    maskeler — gerçek değer HTML'e hiç girmez (eski sürüm data-real
-    attribute'unda düz metin tutuyordu; daha da eski sürüm bu bayrağı Flask
-    `session`'da — yani cihaza özel bir çerezde — tutuyordu, bu yüzden aynı
-    kişi telefondan ve bilgisayardan farklı Life Score görebiliyordu)."""
-    gizli = get_gelir_gizli()
-
-    def para_gizle(value, suffix=" ₺"):
-        """Gizli modda '••••••', aksi halde '1234.56 ₺'. None -> '—'."""
-        if gizli:
-            return PARA_MASK
+def _inject_money_format():
+    def para_fmt(value, suffix=" ₺"):
+        """'1234.56 ₺'. None -> '—'."""
         if value is None:
             return "—"
         return f"{value:.2f}{suffix}"
 
-    return {"gelir_gizli": gizli, "PARA_MASK": PARA_MASK, "para_gizle": para_gizle}
+    return {"para_fmt": para_fmt}
 
 
 @app.route("/")
@@ -154,19 +128,7 @@ def root():
         _auto_backup_if_needed()
     except Exception as exc:  # yedekleme bir FS hatası verirse ana sayfa çökmesin
         app.logger.warning("Otomatik yedek alınamadı: %s", exc)
-
-    from common import today_tr, now_tr
-    import dashboard_logic as dash
-
-    ctx = dash.DashboardContext(today_tr())
-    gelir_gizli = get_gelir_gizli()
-    home = dash.build_home_context(ctx, now_tr(), gelir_gizli)
-
-    return render_template(
-        "home.html",
-        module_theme="home", module_index_endpoint="root", module_brand_name="BBA OS",
-        **home,
-    )
+    return redirect(url_for("mesai.index"))
 
 
 def _active_sqlite_path():

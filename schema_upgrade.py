@@ -21,15 +21,7 @@ from sqlalchemy import inspect, text
 log = logging.getLogger(__name__)
 
 # (tablo, kolon, SQL tipi) — var olan DB'lerde eksikse eklenecek kolonlar.
-_ADDED_COLUMNS = [
-    ("transactions", "source", "VARCHAR(64)"),
-    ("daily_tasks", "active", "BOOLEAN DEFAULT 1"),
-    ("habits", "target", "VARCHAR(60)"),
-    ("habits", "track_mode", "VARCHAR(10) DEFAULT 'toggle'"),
-    ("habits", "unit", "VARCHAR(20)"),
-    ("habits", "daily_target", "FLOAT"),
-    ("habits", "amount_input_mode", "VARCHAR(12) DEFAULT 'cumulative'"),
-]
+_ADDED_COLUMNS = []
 
 
 def run(db):

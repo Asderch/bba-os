@@ -4,14 +4,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from extensions import db
 from common import (
-    TR_MONTHS, today_tr,
+    TR_MONTHS, TR_WEEKDAYS, today_tr,
     month_bounds as _month_bounds, prev_next_month as _prev_next_month,
     clamp_year_month, valid_year_month, safe_positive_float as _safe_positive_float,
 )
 from salary import calculate_salary
-from settings import get_gelir_gizli
 from models import (
-    OvertimeEntry, LeaveEntry, MonthlySalary, Transaction,
+    OvertimeEntry, LeaveEntry, MonthlySalary,
     OVERTIME_CATEGORIES, OVERTIME_CATEGORY_LABELS, LEAVE_TYPES, LEAVE_TYPE_LABELS,
 )
 
@@ -27,8 +26,9 @@ def inject_module_info():
     }
 
 
-# "gunadi" filtresi butce.py'de tanımlı (global scope, mesai şablonları da
-# kullanabiliyor) — burada tekrar tanımlanmıyor.
+@bp.app_template_filter("gunadi")
+def format_entry_date(d):
+    return f"{d.strftime('%d.%m')} {TR_WEEKDAYS[d.weekday()]}"
 
 
 def _get_entered_months():
@@ -61,9 +61,7 @@ def _get_last_known_salary(before_year, before_month):
     return row.net_salary if row else None
 
 
-# Bilinçli ince wrapper'lar (common.py'nin thin-wrapper deseni) — butce.py'de
-# birebir aynısı var; ikisi de sadece request.args/form'u clamp/valid_year_month'a
-# bağlıyor, blueprint'e özgü bir davranış eklemiyorlar.
+# Bilinçli ince wrapper'lar: request.args/form'u clamp/valid_year_month'a bağlıyor.
 def _parse_month_arg():
     return clamp_year_month(request.args.get("year", type=int), request.args.get("month", type=int))
 
@@ -133,60 +131,6 @@ def hesaplama():
     )
 
 
-@bp.route("/transfer-to-butce", methods=["POST"])
-def transfer_to_butce():
-    """Bu ayın mesai tutarını Bütçe Takip'e gelir olarak aktarır.
-
-    Berkcan'ın maaş düzeni: bir ayda yapılan mesai, ödemesi BİR SONRAKİ AYIN
-    maaşıyla birlikte hesaba yatıyor (ör. Ağustos mesaisi Eylül'de ödeniyor).
-    Bu yüzden kayıt, mesainin YAPILDIĞI ayın değil, parasının GERÇEKTEN
-    yattığı (bir sonraki) ayın son gününe yazılıyor — Bütçe'nin "bu ay ne
-    kadar param var" sorusu gerçek nakit akışını yansıtsın diye."""
-    year, month = _valid_month_form()
-    if year is None:
-        flash("Geçersiz ay/yıl.")
-        return redirect(url_for("mesai.hesaplama"))
-    first_day, last_day = _month_bounds(year, month)
-
-    overtime_entries = OvertimeEntry.query.filter(
-        OvertimeEntry.entry_date >= first_day, OvertimeEntry.entry_date <= last_day
-    ).all()
-    leave_entries = LeaveEntry.query.filter(
-        LeaveEntry.entry_date >= first_day, LeaveEntry.entry_date <= last_day
-    ).all()
-    calc = calculate_salary(year, month, overtime_entries, leave_entries)
-
-    if not calc["mesai_tutari"]:
-        flash("Bu ay için net maaş girilmemiş ya da aktarılacak mesai tutarı yok.")
-        return redirect(url_for("mesai.hesaplama", year=year, month=month))
-
-    (_, _), (pay_year, pay_month) = _prev_next_month(year, month)
-    _, pay_last_day = _month_bounds(pay_year, pay_month)
-
-    note = f"{TR_MONTHS[month - 1]} {year} mesai geliri"
-    # Dedup anahtarı MESAİNİN AİT OLDUĞU aya göre (hangi ayın mesaisi
-    # aktarıldı sorusu) — ödeme ayına göre değil, yoksa aynı ödeme ayına
-    # düşen farklı aylık mesailer birbirini "zaten aktarıldı" sanıp engellerdi.
-    source = f"mesai:{year:04d}-{month:02d}"
-    if Transaction.query.filter_by(source=source).first():
-        flash("Bu ayın mesai geliri zaten Bütçe Takip'e aktarılmış (tekrar aktarmak istersen önce Bütçe'den o kaydı sil).")
-        return redirect(url_for("mesai.hesaplama", year=year, month=month))
-
-    # Kayıt, paranın GERÇEKTEN yattığı aya (bir sonraki ay) yazılıyor —
-    # bkz. fonksiyon docstring'i.
-    db.session.add(Transaction(
-        entry_date=pay_last_day, kind="gelir", category="Mesai Geliri",
-        amount=calc["mesai_tutari"], note=note, source=source,
-    ))
-    db.session.commit()
-    pay_month_str = f"{TR_MONTHS[pay_month - 1]} {pay_year}"
-    if get_gelir_gizli():
-        flash(f"Mesai geliri Bütçe Takip'e, {pay_month_str} gelirine aktarıldı.")
-    else:
-        flash(f"{calc['mesai_tutari']:.2f} ₺, {pay_month_str} Bütçe gelirine aktarıldı.")
-    return redirect(url_for("mesai.hesaplama", year=year, month=month))
-
-
 @bp.route("/profil")
 def profil():
     year, month = _parse_month_arg()
@@ -207,10 +151,6 @@ def profil():
 
 @bp.route("/salary/set", methods=["POST"])
 def set_salary():
-    if get_gelir_gizli():
-        flash("Maaş girmek/düzenlemek için önce gelirleri göster.")
-        return redirect(url_for("mesai.profil"))
-
     year, month = _valid_month_form()
     if year is None:
         flash("Geçersiz ay/yıl.")

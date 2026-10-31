@@ -2,7 +2,7 @@
 
 # Var olan, gövde gerektirmeyen basit bir POST route: kimlik doğrulaması yok,
 # CSRF muhafızından önce 4xx/5xx başka bir sebeple dönmeyecek bir uç nokta.
-POST_PATH = "/butce/gelir-gizle"
+POST_PATH = "/mesai/overtime/add"
 
 
 def test_post_without_origin_or_referer_is_forbidden(flask_app):

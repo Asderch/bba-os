@@ -1,5 +1,9 @@
 # BBA OS — Vizyon ve Yol Haritası
 
+> **2026-10-31:** Proje sadece Mesai Takip'e indirildi, diğer modüller kaldırıldı.
+> Aşağıdaki yol haritası tarihsel kayıt olarak duruyor; V4-V6 maddeleri artık
+> geçerli değil.
+
 **Slogan:** Balance · Build · Advance — Your Life. Your System.
 
 Bu döküman, Berkcan'ın 4 ayrı takip uygulamasını (İş, Bütçe, Mesai,

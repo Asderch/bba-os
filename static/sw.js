@@ -1,11 +1,10 @@
-const CACHE_NAME = "bba-os-v3";
+const CACHE_NAME = "bba-os-v4";
 const STATIC_ASSETS = [
     "/static/vendor/tabler/css/tabler.min.css",
     "/static/vendor/tabler/js/tabler.min.js",
     "/static/css/custom.css",
     "/static/css/theme-slash.css",
     "/static/js/datepicker.js",
-    "/static/js/color-picker.js",
     "/static/fonts/JetBrainsMono-Regular.woff2",
     "/static/fonts/JetBrainsMono-Bold.woff2",
     "/static/icons/app-192.png",

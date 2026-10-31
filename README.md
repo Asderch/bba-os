@@ -27,25 +27,18 @@ python desktop.py             # masaüstü pencere
 | `BBA_DB_URI` | İç/test amaçlı SQLAlchemy URI, tanımlıysa `BBA_MYSQL_URI`/SQLite dahil her şeyi ezer. Normal kullanımda boş bırak. |
 | `BBA_DEBUG` | `1` ise `python app.py` Werkzeug debugger'ı açar. Sunucuda ayarlama. |
 
-## Modüller
+## Modül
 
-- **İş Takip** (`/is`) — günlük işler (checkbox), terminli işler (tarih
-  bazlı, aciliyet renkli), etiketler, geçmiş
-- **Bütçe Takip** (`/butce`) — gelir/gider takibi, kategori dağılım
-  grafiği, gelir gizleme, abonelik takibi (otomatik gider kaydı ile)
-- **Mesai Takip** (`/mesai`) — fazla mesai kaydı, maaş hesaplama
-  (Excel formülüne dayalı)
-- **Alışkanlık Takip** (`/aliskanlik`) — hedef koymadan işaretleme,
-  "neden" açıklaması, etki puanı, hazır 8'li başlangıç seti; bazı
-  alışkanlıklarda ("amount"/"note" modu) gerçek miktar ya da not girişi
-- **Sayaçlar** (`/sayac`) — Alışkanlık'tan bilinçli olarak ayrı: hedef ya
-  da puan yok, sadece azaltılmak istenen bir şeyin (ör. sigara) sade
-  günlük sayımı
-- **Analizler** (`/analizler`) — tüm modülleri (İş/Alışkanlık/Finans/Mesai)
-  tek sayfada toplayan analiz görünümü: Life Score, momentum, istikrar,
-  içgörüler, İş Takip haftalık tablosu
-- **Notlar** (`/notlar`) — herhangi bir konuda tutulabilen, tüm
-  modüllerden erişilen serbest not defteri
+Uygulama 2026-10-31'de **sadece Mesai Takip**'e indirildi (diğer modüller —
+İş, Bütçe, Alışkanlık, Sayaçlar, Analizler, Notlar, ana ekran — kaldırıldı;
+git geçmişinde duruyor).
+
+- **Mesai Takip** (`/mesai`, açılış sayfası) — fazla mesai ve izin kaydı,
+  aylık net maaş (Profil), maaş/mesai hesaplama (Excel formülüne dayalı)
+
+Eski, çok modüllü bir yedeği sadece-mesai veritabanına çevirmek için:
+`python export_mesai_only.py ESKI_YEDEK.db data/personal_os.db`
+(kaynağa dokunmaz, hedef varsa üzerine yazmaz).
 
 ## Veri Yedekleme
 
